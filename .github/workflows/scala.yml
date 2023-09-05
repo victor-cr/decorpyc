@@ -16,8 +16,6 @@ permissions:
 
 jobs:
   build:
-    uses: victor-cr/decorpyc/.github/workflows/dependency-graph.yml@master
-
     runs-on: ubuntu-latest
 
     steps:

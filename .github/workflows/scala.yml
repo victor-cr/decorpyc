@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   build:
+    uses: victor-cr/decorpyc/.github/workflows/dependency-graph.yml@master
 
     runs-on: ubuntu-latest
 
@@ -30,5 +31,4 @@ jobs:
     - name: Run tests
       run: sbt test
       # Optional: This step uploads information to the GitHub dependency graph and unblocking Dependabot alerts for the repository
-    - name: Upload dependency graph
-      uses: victor-cr/decorpyc/.github/workflows/dependency-graph.yml@master
+

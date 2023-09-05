@@ -168,6 +168,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "Style" => interceptor.replace(Style(this, attributes, fileName, lineNum))
     case "Python" => interceptor.replace(Python(this, attributes, fileName, lineNum))
     case "If" => interceptor.replace(If(this, attributes, fileName, lineNum))
+    case "While" => interceptor.replace(While(this, attributes, fileName, lineNum))
   }
 
   private def transformATL(renpyType: String, attributes: Map[String, _], fileName: String, lineNum: Int): ATLNode = (renpyType: @switch) match {

@@ -137,9 +137,12 @@ class Printer(layout: Layout) {
     case Pass(_, _, expectedLine) =>
       layout.printKeyword(expectedLine, indent, "pass", exclusive = true)
 
-    case If(_, children, _, expectedLine) =>
-      layout.printKeyword(expectedLine, indent, "if", exclusive = true)
-      children.foreach((node: Node) => write(node, indent))
+    case While(_, children, _, expectedLine, maybeCondition) =>
+      layout.printKeyword(expectedLine, indent, "while", exclusive = true)
+      layout.printExpr(expectedLine, indent, maybeCondition.map(_.expression).getOrElse("True"))
+      children.foreach((node: Node) => write(node, indent + 1))
+
+    case If(_, children, _, expectedLine) => children.foreach((node: Node) => write(node, indent))
 
     case IfCondition(children, _, expectedLine, ConditionType.IF, condition, _, _) =>
       layout.printKeyword(expectedLine, indent, "if", exclusive = true)

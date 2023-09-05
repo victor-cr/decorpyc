@@ -7,25 +7,7 @@ import java.io.{ByteArrayOutputStream, File, PrintWriter, StringWriter}
 import java.nio.charset.Charset
 
 class PrettyPrint(layout: Layout) {
-
-  //  private def pythonEscape(text: String): String = {
-  //    val buf = new mutable.StringBuilder
-  //    text.foreach {
-  //      case '\"' => buf.append("\\\"")
-  //      case '\\' => buf.append("\\\\")
-  //      case '\n' => buf.append("\\\"")
-  //      case '\r' => buf.append("\\\"")
-  //      case '\t' => buf.append("\\\"")
-  //      case '\b' => buf.append("\\\"")
-  //      case '\f' => buf.append("\\\"")
-  //      case '\"' => buf.append("\\\"")
-  //    }
-  //    buf.toString()
-  //  }
   private def printToWriter(out: PrintWriter): Unit = {
-    var lastLineNum = 1
-    var lastIndent = 0
-
     layout.traverse {
       case (None, (line, Markup(indent, value))) =>
         Iterator.range(1, line).foreach(_ => out.println())
@@ -36,7 +18,7 @@ class PrettyPrint(layout: Layout) {
         if (prevIndent < currentIndent) out.print(':')
         Iterator.range(prevLine, currentLine).foreach(_ => out.println())
         Iterator.range(0, currentIndent).foreach(_ => out.print(indentText))
-        out.write(value)
+        out.print(value.stripTrailing())
 
       case (Some((_, _: Expr)), (_, _: Open)) =>
         out.print('(')
@@ -47,15 +29,15 @@ class PrettyPrint(layout: Layout) {
       case (Some((_, _: Markup)), (_, _: Next)) =>
         out.print(',')
       case (Some((_, _: Open)), (_, Key(_, _, value))) =>
-        out.print(value)
+        out.print(value.stripTrailing())
       case (Some((_, _: Open)), (_, Value(_, _, value))) =>
-        out.print(value)
+        out.print(value.stripTrailing())
       case (Some((_, _: Key)), (_, Value(_, _, value))) =>
         out.print('=')
-        out.print(value)
+        out.print(value.stripTrailing())
       case (_, (_, Markup(_, value))) =>
         out.print(' ')
-        out.print(value)
+        out.print(value.stripTrailing())
     }
   }
 

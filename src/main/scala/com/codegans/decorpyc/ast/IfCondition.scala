@@ -15,7 +15,7 @@ object IfCondition {
   def apply(fileName: String, lastLine: Int, conditionType: ConditionType, condition: Option[PyExpr], children: List[ASTNode]): IfCondition = {
     val lineList = children.map(_.lineNum)
     val lineNum = condition match {
-      case Some(DebugPyExpr(_, `fileName`, line, _)) if line > lastLine => line
+      case Some(DebugPyExpr(_, `fileName`, line, _)) if line >= lastLine => line
       case _ => lastLine + 1
     }
     val startLine = lineList.minOption.getOrElse(lineNum)

@@ -23,14 +23,14 @@ object If extends ASTNodeFactory[If] {
         val expr = context.transformPyExpr(condition)
         val ifBlock = block.flatMap(context.transformAST)
 
-        val child = IfCondition(fileName, lineNum, ConditionType.IF, expr, ifBlock)
+        val child = IfCondition(fileName, lastLine, ConditionType.IF, expr, ifBlock)
 
         lastLine = child.endLine
         children.addOne(child)
       case (("True" | None) :: (block: List[_]) :: Nil, i) if i + 1 == entries.size =>
         val elseBlock = block.flatMap(context.transformAST)
 
-        val child = IfCondition(fileName, lineNum, ConditionType.ELSE, None, elseBlock)
+        val child = IfCondition(fileName, lastLine, ConditionType.ELSE, None, elseBlock)
 
         lastLine = child.endLine
         children.addOne(child)
@@ -38,7 +38,7 @@ object If extends ASTNodeFactory[If] {
         val expr = context.transformPyExpr(condition)
         val elifBlock = block.flatMap(context.transformAST)
 
-        val child = IfCondition(fileName, lineNum, ConditionType.ELIF, expr, elifBlock)
+        val child = IfCondition(fileName, lastLine, ConditionType.ELIF, expr, elifBlock)
 
         lastLine = child.endLine
         children.addOne(child)

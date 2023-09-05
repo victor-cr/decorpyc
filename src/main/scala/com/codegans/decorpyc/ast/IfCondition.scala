@@ -14,12 +14,16 @@ object IfCondition {
 
   def apply(fileName: String, lastLine: Int, conditionType: ConditionType, condition: Option[PyExpr], children: List[ASTNode]): IfCondition = {
     val lineList = children.map(_.lineNum)
-    val lineNum = condition match {
-      case Some(DebugPyExpr(_, `fileName`, line, _)) if line >= lastLine => line
-      case _ => lastLine + 1
+    val maybeStartLine = lineList.minOption
+    val maybeEndLine = lineList.maxOption
+    val maybeLineNum = condition match {
+      case Some(DebugPyExpr(_, `fileName`, line, _)) if line > lastLine => Some(line)
+      case _ => None
     }
-    val startLine = lineList.minOption.getOrElse(lineNum)
-    val endLine = lineList.maxOption.getOrElse(lineNum)
+
+    val lineNum = maybeLineNum.orElse(maybeStartLine.map(_ - 1)).getOrElse(lastLine + 1)
+    val startLine = maybeStartLine.getOrElse(lineNum)
+    val endLine = maybeEndLine.getOrElse(lineNum)
 
     new IfCondition(children, fileName, lineNum, conditionType, condition, startLine, endLine)
   }

@@ -199,6 +199,9 @@ object Pickle {
 
     stack.pop() match {
       case (attributes: Map[String, _]) :: (list: List[_]) :: Nil => OpcodeRoot(attributes, list)
+      case index: Map[String, _] => OpcodeRoot(index, Nil)
+      case value =>
+        throw new IllegalArgumentException(s"Unexpected root format: $value")
     }
   }
 

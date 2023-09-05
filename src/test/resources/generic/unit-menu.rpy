@@ -31,7 +31,13 @@ label menus:
                 "Go left.":
                     pass
                 "Go right.":
-                    pass
+                    "It looks like the direction is right"
+                    label new_sub_sub_menu:
+                        "Many text lines here 1"
+                        "Many text lines here 2"
+                        "Many text lines here 3"
+                        "Many text lines here 4"
+                        "Many text lines here 5"
                 "Fly above." if drank_tea:
                     pass
 

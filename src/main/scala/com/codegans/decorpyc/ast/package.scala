@@ -87,23 +87,20 @@ package object ast {
     def transformString: PartialFunction[Any, Option[String]] = {
       case value: String => Some(value)
       case None => None
-      case Some(None) => None
-      case Some(value: String) => Some(value)
+      case Some(value) => transformString(value)
     }
 
     def transformStringList: PartialFunction[Any, List[String]] = {
       case value: String => List(value)
+      case value: List[String] => value
       case None => Nil
-      case Some(None) => Nil
-      case Some(value: String) => List(value)
-      case Some(value: List[String]) => value
+      case Some(value) => transformStringList(value)
     }
 
     def transformStringMap: PartialFunction[Any, Map[String, _]] = {
       case value: Map[String, _] => value
       case None => Map.empty
-      case Some(None) => Map.empty
-      case Some(value: Map[String, _]) => value
+      case Some(value) => transformStringMap(value)
     }
   }
 

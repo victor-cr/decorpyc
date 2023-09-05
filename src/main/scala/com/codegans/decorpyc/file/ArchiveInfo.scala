@@ -10,7 +10,8 @@ case class ArchiveInfo(
                         version: String,
                         offset: Long,
                         key: Long,
-                        index: ArchiveIndex
+                        index: ArchiveIndex,
+                        files: List[FileInfo]
                       )
 
 object ArchiveInfo {
@@ -32,11 +33,13 @@ object ArchiveInfo {
     source.seek(start)
     val index = ArchiveIndex(source.readZLib(), key)
     source.seek(offset)
+
     val files = index.entries.map { case ArchiveEntry(name, off, len) =>
       source.seek(off)
 
       FileInfo(name, source.read(len))
     }
-    ArchiveInfo("<unknown yet>", version, start, key, index)
+
+    ArchiveInfo("<unknown yet>", version, start, key, index, files)
   }
 }

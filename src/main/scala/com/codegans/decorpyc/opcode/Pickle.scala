@@ -12,6 +12,7 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 class Pickle(key: Option[Int], _source: ByteSource) {
+  private var instanceId: Int = 0
   private var proto: Option[Int] = None
   private val frames: ListBuffer[ByteSource] = ListBuffer()
   private val stack: mutable.Stack[Any] = mutable.Stack()
@@ -175,7 +176,8 @@ class Pickle(key: Option[Int], _source: ByteSource) {
   private def readNewInstance(): Unit = {
     val args = stack.pop().asInstanceOf[Product].productIterator.toList
     val classRef = stack.pop()
-    stack.push(NewInstance(classRef, args))
+    stack.push(NewInstance(instanceId, classRef, args))
+    instanceId += 1
   }
 
   private def length(sizeOf: SizeOf): Int = sizeOf match {

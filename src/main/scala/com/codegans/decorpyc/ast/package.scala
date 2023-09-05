@@ -24,6 +24,14 @@ package object ast {
 
   trait Node
 
+  class NodeRef(resolve: => Node) {
+    lazy val ref: Node = resolve
+  }
+
+  object NodeRef {
+    def unapply(node: NodeRef): Option[Node] = Some(node.ref)
+  }
+
   trait ASTNode extends Node with DebugInfo
 
   trait Attributes {
@@ -58,6 +66,10 @@ package object ast {
   }
 
   trait NodeContext {
+    def ref(id: Int): NodeRef
+
+    def ref(instance: Any): NodeRef
+
     def transformAST: PartialFunction[Any, List[ASTNode]]
 
     def transformATL: PartialFunction[Any, List[ATLNode]]
@@ -99,7 +111,7 @@ package object ast {
     override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): T
   }
 
-  trait PyCode {
+  trait PyCode extends Node {
     def source: PyExpr
 
     def mode: String
@@ -129,7 +141,7 @@ package object ast {
     }
   }
 
-  trait PyExpr {
+  trait PyExpr extends Node {
     def expression: String
   }
 
@@ -141,13 +153,13 @@ package object ast {
 
   case class DebugPyExpr(override val expression: String, override val fileName: String, override val lineNum: Int, py: Int) extends PyExpr with DebugInfo
 
-  case class ParameterInfo(attributes: Map[String, _], params: Map[String, Option[PyExpr]])
+  case class ParameterInfo(attributes: Map[String, _], params: Map[String, Option[PyExpr]]) extends Node
 
   case class ArgumentInfo(attributes: Map[String, _],
                           arguments: List[(Option[String], Option[PyExpr])],
                           starredIndexes: Any,
                           doubleStarredIndexes: Any,
                           version: Int
-                         )
+                         ) extends Node
 
 }

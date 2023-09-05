@@ -56,7 +56,10 @@ object FileInfo {
 
       val compiled = source.readZLib(slots.head.length)
       val root = Pickle(compiled)
-      val decompiled = Printer.toSource(new OpcodeTransformer(NodeInterceptor(MultilineSayAspect.Body, MultilineSayAspect.AST)).apply(root))
+      val decompiled = Printer.toSource(new OpcodeTransformer(NodeInterceptor(
+        MultilineSayAspect.Body,
+        MultilineSayAspect.AST
+      )).apply(root))
 
       source.reset()
       RenpyFileInfo(name, compiled, decompiled, slots)

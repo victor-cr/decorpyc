@@ -8,40 +8,49 @@ import com.codegans.decorpyc.opcode._
 import com.codegans.decorpyc.transform.OpcodeTransformer.defaultPyVersion
 
 import scala.annotation.switch
+import scala.collection.mutable.ListBuffer
 
 class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with Function[OpcodeInstruction, Root] {
+  private val instanceTable: ListBuffer[Option[Node]] = ListBuffer()
+
+  override def ref(id: Int): NodeRef = new NodeRef(instanceTable(id).get)
+
+  override def ref(instance: Any): NodeRef = instance match {
+    case NewInstance(id, _, _) => ref(id)
+    case _ => throw new IllegalArgumentException(s"Unknown instance identifier: $instance")
+  }
 
   override def transformAST: PartialFunction[Any, List[ASTNode]] = {
     case None => Nil
     case Some(value) => transformAST(value)
-    case SetUpdate(NewInstance(GlobalFunction("renpy.ast", className), Nil), attributes: Map[String, _]) =>
+    case SetUpdate(NewInstance(id, GlobalFunction("renpy.ast", className), Nil), attributes: Map[String, _]) =>
       val fileName = attributes("filename").asInstanceOf[String]
       val lineNum = attributes("linenumber").asInstanceOf[Int]
-      List(transformAST(className, attributes - "filename" - "linenumber", fileName, lineNum))
+      List(storeInstance(id, transformAST(className, attributes - "filename" - "linenumber", fileName, lineNum)))
     case value => throw new IllegalArgumentException(s"Unknown AST instruction: $value")
   }
 
   override def transformATL: PartialFunction[Any, List[ATLNode]] = {
     case None => Nil
     case Some(value) => transformATL(value)
-    case SetUpdate(NewInstance(GlobalFunction("renpy.atl", className), Nil), attributes: Map[String, _]) =>
+    case SetUpdate(NewInstance(id, GlobalFunction("renpy.atl", className), Nil), attributes: Map[String, _]) =>
       val (fileName, lineNum) = attributes("loc") match {
         case (fileName: String) :: (lineNum: Int) :: Nil => fileName -> lineNum
         case value => throw new IllegalArgumentException(s"Location is not a valid list: $value")
       }
-      List(transformATL(className, attributes - "loc", fileName, lineNum))
+      List(storeInstance(id, transformATL(className, attributes - "loc", fileName, lineNum)))
     case value => throw new IllegalArgumentException(s"Unknown ATL instruction: $value")
   }
 
   override def transformSL: PartialFunction[Any, List[SLNode]] = {
     case None => Nil
     case Some(value) => transformSL(value)
-    case SetUpdate(NewInstance(GlobalFunction("renpy.sl2.slast", className), Nil), attributes: Map[String, _]) =>
+    case SetUpdate(NewInstance(id, GlobalFunction("renpy.sl2.slast", className), Nil), attributes: Map[String, _]) =>
       val (fileName, lineNum) = attributes("location") match {
         case (fileName: String) :: (lineNum: Int) :: Nil => fileName -> lineNum
         case value => throw new IllegalArgumentException(s"Location is not a valid list: $value")
       }
-      List(transformSL(className, attributes - "location", fileName, lineNum))
+      List(storeInstance(id, transformSL(className, attributes - "location", fileName, lineNum)))
     case value => throw new IllegalArgumentException(s"Unknown SL instruction: $value")
   }
 
@@ -52,15 +61,15 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case num: Int => Some(StringPyExpr(num.toString))
     case code: PyCode => Some(code.source)
     case expr: PyExpr => Some(expr)
-    case NewInstance(GlobalFunction("renpy.ast", "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: (py: Int) :: Nil) :: Nil) =>
-      Some(DebugPyExpr(expression, fileName, lineNum, py))
-    case NewInstance(GlobalFunction("renpy.ast", "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: Nil) :: Nil) =>
-      Some(DebugPyExpr(expression, fileName, lineNum, defaultPyVersion))
-    case SetUpdate(NewInstance(GlobalFunction("renpy.ast", "PyExpr"), (expression: String) :: (_: List[_]) :: Nil), attributes: Map[String, _]) =>
+    case NewInstance(id, GlobalFunction("renpy.ast", "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: (py: Int) :: Nil) :: Nil) =>
+      Some(storeInstance(id, DebugPyExpr(expression, fileName, lineNum, py)))
+    case NewInstance(id, GlobalFunction("renpy.ast", "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: Nil) :: Nil) =>
+      Some(storeInstance(id, DebugPyExpr(expression, fileName, lineNum, defaultPyVersion)))
+    case SetUpdate(NewInstance(id, GlobalFunction("renpy.ast", "PyExpr"), (expression: String) :: (_: List[_]) :: Nil), attributes: Map[String, _]) =>
       val fileName = attributes("filename").asInstanceOf[String]
       val lineNum = attributes("linenumber").asInstanceOf[Int]
       val py = attributes.get("py").map(_.asInstanceOf[Int]).getOrElse(defaultPyVersion)
-      Some(DebugPyExpr(expression, fileName, lineNum, py))
+      Some(storeInstance(id, DebugPyExpr(expression, fileName, lineNum, py)))
     case value => throw new IllegalArgumentException(s"Not valid PyExpr object: $value")
   }
 
@@ -70,28 +79,28 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case code: PyCode => Some(code)
     case expr: DebugPyExpr => Some(PyCode(expr, "eval", expr.py))
     case expr: PyExpr => Some(PyCode(expr, "eval", defaultPyVersion))
-    case SetState(NewInstance(GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: (source: String) :: ((fileName: String) :: (lineNum: Int) :: (_: Int) :: Nil) :: (mode: String) :: (py: Int) :: Nil) =>
-      Some(PyCode(DebugPyExpr(source, fileName, lineNum, py), mode, py))
-    case SetState(NewInstance(GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: source :: (_: List[_]) :: (mode: String) :: (py: Int) :: Nil) =>
-      transformPyExpr(source).map(ast.PyCode(_, mode, py))
-    case SetState(NewInstance(GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: source :: (_: List[_]) :: (mode: String) :: Nil) =>
-      transformPyExpr(source).map(ast.PyCode(_, mode, 2))
+    case SetState(NewInstance(id, GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: (source: String) :: ((fileName: String) :: (lineNum: Int) :: (_: Int) :: Nil) :: (mode: String) :: (py: Int) :: Nil) =>
+      Some(storeInstance(id, PyCode(DebugPyExpr(source, fileName, lineNum, py), mode, py)))
+    case SetState(NewInstance(id, GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: source :: (_: List[_]) :: (mode: String) :: (py: Int) :: Nil) =>
+      transformPyExpr(source).map(expr => storeInstance(id, ast.PyCode(expr, mode, py)))
+    case SetState(NewInstance(id, GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: source :: (_: List[_]) :: (mode: String) :: Nil) =>
+      transformPyExpr(source).map(expr => storeInstance(id, ast.PyCode(expr, mode, defaultPyVersion)))
     case value => throw new IllegalArgumentException(s"Value is not a code block: $value")
   }
 
   override def transformArgumentInfo: PartialFunction[Any, Option[ArgumentInfo]] = {
     case None => None
     case Some(value) => transformArgumentInfo(value)
-    case SetUpdate(NewInstance(GlobalFunction("renpy.ast", "ArgumentInfo"), Nil), attributes: Map[String, _]) =>
-      Some(transformArgumentInfo(attributes))
+    case SetUpdate(NewInstance(id, GlobalFunction("renpy.ast", "ArgumentInfo"), Nil), attributes: Map[String, _]) =>
+      Some(storeInstance(id, transformArgumentInfo(attributes)))
     case value => throw new IllegalArgumentException(s"Not valid ArgumentInfo object: $value")
   }
 
   override def transformParameterInfo: PartialFunction[Any, Option[ParameterInfo]] = {
     case None => None
     case Some(value) => transformParameterInfo(value)
-    case SetUpdate(NewInstance(GlobalFunction("renpy.ast", "ParameterInfo"), Nil), attributes: Map[String, _]) =>
-      Some(transformParameterInfo(attributes))
+    case SetUpdate(NewInstance(id, GlobalFunction("renpy.ast", "ParameterInfo"), Nil), attributes: Map[String, _]) =>
+      Some(storeInstance(id, transformParameterInfo(attributes)))
     case value => throw new IllegalArgumentException(s"Not valid ParameterInfo object: $value")
   }
 
@@ -191,6 +200,21 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "SLIf" => interceptor.replace(SLIf(this, attributes, fileName, lineNum))
     case "SLFor" => interceptor.replace(SLFor(this, attributes, fileName, lineNum))
     case "SLBlock" => interceptor.replace(SLBlock(this, attributes, fileName, lineNum))
+  }
+
+  private def storeInstance[T <: Node](id: Int, instance: T): T = {
+    val size = instanceTable.size
+
+    if (id > size) {
+      Iterator.range(size, id).foreach(_ => instanceTable.addOne(None))
+      instanceTable.addOne(Some(instance))
+    } else if (id < size) {
+      instanceTable.update(id, Some(instance))
+    } else {
+      instanceTable.addOne(Some(instance))
+    }
+
+    instance
   }
 }
 

@@ -9,7 +9,7 @@ package object opcode {
 
   case class GlobalFunction(moduleName: String, functionName: String) extends OpcodeInstruction
 
-  case class NewInstance(classRef: Any, args: List[Any]) extends OpcodeInstruction
+  case class NewInstance(id: Int, classRef: Any, args: List[Any]) extends OpcodeInstruction
 
   case class Invocation(objRef: Any, args: List[Any]) extends OpcodeInstruction
 

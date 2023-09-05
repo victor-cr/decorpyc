@@ -60,6 +60,8 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, "=")
       layout.printExpr(expectedLine, indent, maybeCode.map(_.source.expression).getOrElse("None"))
 
+    case Label(_, Nil, _, _, labelName, _) =>
+      log.warn("Ignore virtual label: {}", labelName)
     case Label(_, children, _, expectedLine, labelName, params) =>
       layout.printKeyword(expectedLine, indent, "label", exclusive = true)
       layout.printExpr(expectedLine, indent, labelName)
@@ -70,18 +72,32 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, text)
       children.foreach((node: Node) => write(node, indent + 1))
 
-    case Menu(_, children, _, expectedLine, _, _, _, _, _, _) =>
+    case Menu(_, children, _, expectedLine, NodeRef(Label(_, Nil, _, _, labelName, params)), caption, args, withA, set, itemArgs) =>
       layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
+      args.foreach(layout.printArgs(expectedLine, indent, _))
+      layout.printExpr(expectedLine, indent, labelName)
+      params.foreach(layout.printArgs(expectedLine, indent, _))
+      set.foreach {
+        case DebugPyExpr(e, _, lineNum, _) =>
+          layout.printKeyword(lineNum, indent + 1, "set").printExpr(lineNum, indent + 1, e)
+          caption.foreach(e => layout.printText(lineNum + 1, indent + 1, e))
+        case PyExpr(e) =>
+          layout.printKeyword(expectedLine, indent + 1, "set").printExpr(expectedLine, indent + 1, e)
+          caption.foreach(e => layout.printText(expectedLine + 1, indent + 1, e))
+      }
+      children.foreach((node: Node) => write(node, indent + 1))
+    case Menu(_, children, _, expectedLine, _, caption, args, _, _, _) =>
+      layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
+      args.foreach(layout.printArgs(expectedLine, indent, _))
       children.foreach((node: Node) => write(node, indent + 1))
 
-    case MenuItem(children, _, expectedLine, text, None, _, _) =>
-      layout.printKeyword(expectedLine, indent, text)
-      children.foreach((node: Node) => write(node, indent + 1))
-    case MenuItem(children, _, expectedLine, text, Some(PyExpr("True")), _, _) =>
+    case MenuItem(children, _, expectedLine, text, None, args, _, _) =>
       layout.printText(expectedLine, indent, text)
+      args.foreach(layout.printArgs(expectedLine, indent, _))
       children.foreach((node: Node) => write(node, indent + 1))
-    case MenuItem(children, _, expectedLine, text, Some(PyExpr(condition)), _, _) =>
+    case MenuItem(children, _, expectedLine, text, Some(PyExpr(condition)), args, _, _) =>
       layout.printText(expectedLine, indent, text)
+      args.foreach(layout.printArgs(expectedLine, indent, _))
       layout.printKeyword(expectedLine, indent, "if")
       layout.printExpr(expectedLine, indent, condition)
       children.foreach((node: Node) => write(node, indent + 1))
@@ -120,8 +136,12 @@ class Printer(layout: Layout) {
       maybeArgs.foreach(layout.printArgs(expectedLine, indent, _))
       withA.foreach(e => layout.printKeyword(expectedLine, indent, "with").printExpr(expectedLine, indent, e))
 
-    case Jump(_, _, expectedLine, false, target) =>
+    case Jump(_, _, expectedLine, false, PyExpr(target)) =>
       layout.printKeyword(expectedLine, indent, "jump", exclusive = true)
+      layout.printExpr(expectedLine, indent, target)
+    case Jump(_, _, expectedLine, true, PyExpr(target)) =>
+      layout.printKeyword(expectedLine, indent, "jump", exclusive = true)
+      layout.printExpr(expectedLine, indent, "expression")
       layout.printExpr(expectedLine, indent, target)
 
     case Call(_, _, expectedLine, PyExpr(label), false, maybeArgs) =>

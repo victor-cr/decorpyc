@@ -7,7 +7,7 @@ case class Define(
                    prefix: Option[String],
                    variable: String,
                    operator: String,
-                   index: Option[_],
+                   index: Option[PyCode],
                    code: Option[PyCode]
                  ) extends ASTNode with Attributes
 
@@ -19,7 +19,7 @@ object Define extends ASTNodeFactory[Define] {
   private val keyCode: String = "code"
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): Define = {
-    val index = attributes.get(keyIndex)
+    val index = context.transformPyCode(attributes.get(keyIndex))
     val prefix = context.transformString(attributes.get(keyStore)).filter(_.startsWith("store.")).map(_.stripPrefix("store."))
     val variable = attributes(keyVarName).asInstanceOf[String]
     val operator = attributes.getOrElse(keyOperator, "=").asInstanceOf[String]

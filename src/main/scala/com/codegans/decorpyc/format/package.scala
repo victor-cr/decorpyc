@@ -33,18 +33,12 @@ package object format {
 
   case class Comment(override val indent: Int, override val id: Int, value: String) extends Markup
 
-  case class Open(override val indent: Int, override val id: Int) extends Markup {
-    override def value: String = "("
-  }
+  case class Open(override val indent: Int, override val id: Int, value: String) extends Markup
 
   case class Next(override val indent: Int, override val id: Int) extends Markup {
     override def value: String = ","
-
   }
 
-  case class Close(override val indent: Int, override val id: Int) extends Markup {
-    override def value: String = ")"
-
-  }
+  case class Close(override val indent: Int, override val id: Int, value: String) extends Markup
 
 }

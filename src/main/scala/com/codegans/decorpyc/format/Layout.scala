@@ -98,7 +98,7 @@ class Layout(doubleQuotedText: Boolean = true) {
 
   def printExpr(line: Int, indent: Int, expr: PyExpr): Layout = rawPrint(line, Expr(indent, id, expr.expression)) //TODO: maybe validate positiona
 
-  def printOpen(line: Int, indent: Int): Layout = rawPrint(line, Open(indent, id))
+  def printOpen(line: Int, indent: Int, value: String = "("): Layout = rawPrint(line, Open(indent, id, value))
 
   def printNext(line: Int, indent: Int): Layout = rawPrint(line, Next(indent, id))
 
@@ -108,7 +108,7 @@ class Layout(doubleQuotedText: Boolean = true) {
 
   def printValue(line: Int, indent: Int, expr: PyExpr): Layout = rawPrint(line, Value(indent, id, expr.expression)) //TODO: maybe validate position
 
-  def printClose(line: Int, indent: Int): Layout = rawPrint(line, Close(indent, id))
+  def printClose(line: Int, indent: Int, value: String = ")"): Layout = rawPrint(line, Close(indent, id, value))
 
   def printComment(line: Int, indent: Int, comment: String): Layout = rawPrint(line, Comment(Int.MaxValue, id, comment))
 

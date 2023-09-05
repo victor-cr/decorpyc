@@ -41,16 +41,21 @@ class Printer(layout: Layout) {
         layout.printExpr(initLine, indent, p)
         currentPriority = p
       }
-      children.foreach((node: Node) => write(node, indent + 1))
+      children.foreach(write(_, indent + 1))
     case Init(_, children@(_: Python) :: _, _, initLine, _) =>
       layout.printKeyword(initLine, indent, "init", exclusive = true)
-      children.foreach((node: Node) => write(node, indent))
+      children.foreach(write(_, indent))
     case Init(_, children, _, _, _) =>
-      children.foreach((node: Node) => write(node, indent))
+      children.foreach(write(_, indent))
 
-    case Define(_, _, expectedLine, prefix, variable, operator, _, maybeCode) =>
+    case Define(_, _, expectedLine, prefix, variable, operator, index, maybeCode) =>
       layout.printKeyword(expectedLine, indent, "define", exclusive = true)
       layout.printExpr(expectedLine, indent, prefix.map(_ + '.' + variable).getOrElse(variable))
+      index.foreach { case PyCode(PyExpr(expression), _) =>
+        layout.printOpen(expectedLine, indent, "[")
+          .printExpr(expectedLine, indent, expression)
+          .printClose(expectedLine, indent, "]")
+      }
       layout.printExpr(expectedLine, indent, operator)
       layout.printExpr(expectedLine, indent, maybeCode.map(_.source.expression).getOrElse("None"))
 
@@ -191,16 +196,22 @@ class Printer(layout: Layout) {
     //      out.print("with ")
     //      out.print(expression)
 
-    case Image(_, atl, _, expectedLine, name :: Nil, None) =>
+    case Image(_, atl, _, expectedLine, names, None) =>
       layout.printKeyword(expectedLine, indent, "image", exclusive = true)
-      layout.printExpr(expectedLine, indent, name)
-      atl.foreach((node: Node) => write(node, indent + 1))
-    case Image(_, atl, _, expectedLine, name :: Nil, Some(OnelinerPyCode(PyExpr(expression), _, _))) =>
+      names.foreach(layout.printExpr(expectedLine, indent, _))
+      atl.foreach(writeATL(_, indent, initial = true))
+    case Image(_, atl, _, expectedLine, names, Some(OnelinerPyCode(PyExpr(expression), _, _))) =>
       layout.printKeyword(expectedLine, indent, "image", exclusive = true)
-      layout.printExpr(expectedLine, indent, name)
+      names.foreach(layout.printExpr(expectedLine, indent, _))
       layout.printExpr(expectedLine, indent, "=")
       layout.printExpr(expectedLine, indent, expression)
-      atl.foreach((node: Node) => write(node, indent + 1))
+      atl.foreach(writeATL(_, indent, initial = true))
+    case Image(_, atl, _, expectedLine, names, Some(BlockPyCode(PyExpr(expression), _, _, lines))) =>
+      layout.printKeyword(expectedLine, indent, "image", exclusive = true)
+      names.foreach(layout.printExpr(expectedLine, indent, _))
+      layout.printExpr(expectedLine, indent, "=")
+      lines.foreach { case (line, text) => layout.printExpr(expectedLine + line, indent, text) }
+      atl.foreach(writeATL(_, indent, initial = true))
 
     case Style(_, _, expectedLine, name, parent, _, _, variant, props, _) =>
       layout.printKeyword(expectedLine, indent, "style", exclusive = true)
@@ -274,14 +285,10 @@ class Printer(layout: Layout) {
       keyword.foreach { case (key, Some(PyExpr(expression))) => layout.printExpr(expectedLine, indent, key).printExpr(expectedLine, indent, expression) }
       children.foreach((node: Node) => write(node, indent))
 
-    case Show(_, ATLRawBlock(_, children, _, _, animation) :: Nil, _, expectedLine, (head: List[String]) :: _) =>
-      layout.printKeyword(expectedLine, indent, "show")
-      head.foreach(layout.printExpr(expectedLine, indent, _))
-      children.foreach(e => write(e, indent + 1))
     case Show(_, atl, _, expectedLine, (head: List[String]) :: _) =>
       layout.printKeyword(expectedLine, indent, "show")
       head.foreach(layout.printExpr(expectedLine, indent, _))
-      atl.foreach(e => write(e, indent + 1))
+      atl.foreach(writeATL(_, indent, initial = true))
 
     case Hide(_, _, expectedLine, (head: List[String]) :: _) =>
       layout.printKeyword(expectedLine, indent, "hide")
@@ -296,28 +303,33 @@ class Printer(layout: Layout) {
       layout.printKeyword(expectedLine, indent, "transform", exclusive = true)
       layout.printExpr(expectedLine, indent, variable)
       params.foreach(layout.printArgs(expectedLine, indent, _))
-      atl.foreach((node: Node) => write(node, indent + 1))
+      atl.foreach(writeATL(_, indent, initial = true))
 
     case EndTranslate(_, _, expectedLine) =>
       layout.printKeyword(expectedLine, indent, "end translate")
 
+  }
+
+  def writeATL(node: ATLNode, indent: Int, initial: Boolean = false): Unit = node match {
+    case ATLRawBlock(_, children, _, expectedLine, animation) if initial =>
+      children.foreach(writeATL(_, indent + 1))
     case ATLRawBlock(_, children, _, expectedLine, animation) =>
       layout.printKeyword(expectedLine - 1, indent, "block", exclusive = true)
-      children.foreach((node: Node) => write(node, indent + 1))
+      children.foreach(writeATL(_, indent + 1))
 
     case ATLRawOn(_, children, _, expectedLine) =>
       children.foreach { case (key, ATLRawBlock(_, children, _, lineNum, _)) =>
         layout.printKeyword(lineNum - 1, indent, "on", exclusive = true)
         layout.printExpr(lineNum - 1, indent, key)
-        children.foreach(child => write(child, indent + 1))
+        children.foreach(writeATL(_, indent + 1))
       }
     case ATLRawChild(_, children, _, expectedLine) =>
-      children.foreach((node: Node) => write(node, indent))
+      children.foreach(writeATL(_, indent))
 
     case ATLRawParallel(_, children, _, expectedLine) =>
       children.foreach { case ATLRawBlock(_, children, _, lineNum, _) =>
         layout.printKeyword(lineNum - 1, indent, "parallel", exclusive = true)
-        children.foreach(child => write(child, indent + 1))
+        children.foreach(writeATL(_, indent + 1))
       }
 
     case ATLRawFunction(_, _, expectedLine, Some(PyExpr(expression))) =>

@@ -20,10 +20,10 @@ class PrettyPrint(layout: Layout) {
         Iterator.range(0, currentIndent).foreach(_ => out.print(indentText))
         out.print(value.stripTrailing())
 
-      case (Some((_, _: Expr)), (_, _: Open)) =>
-        out.print('(')
-      case (Some((_, _: Markup)), (_, _: Close)) =>
-        out.print(')')
+      case (Some((_, _: Expr)), (_, Open(_, _, value))) =>
+        out.print(value)
+      case (Some((_, _: Markup)), (_, Close(_, _, value))) =>
+        out.print(value)
       case (Some((_, _: Open)), (_, _: Next)) =>
         log.debug("Ignore comma before param list")
       case (Some((_, _: Markup)), (_, _: Next)) =>
@@ -31,6 +31,8 @@ class PrettyPrint(layout: Layout) {
       case (Some((_, _: Open)), (_, Key(_, _, value))) =>
         out.print(value.stripTrailing())
       case (Some((_, _: Open)), (_, Value(_, _, value))) =>
+        out.print(value.stripTrailing())
+      case (Some((_, _: Open)), (_, Expr(_, _, value))) =>
         out.print(value.stripTrailing())
       case (Some((_, _: Key)), (_, Value(_, _, value))) =>
         out.print('=')

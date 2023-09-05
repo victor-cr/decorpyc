@@ -139,6 +139,8 @@ package object ast {
           throw new IllegalArgumentException("PyCode block is blank")
         }
     }
+
+    def unapply(code: PyCode): Option[(PyExpr, String)] = Some(code.source -> code.mode)
   }
 
   trait PyExpr extends Node {

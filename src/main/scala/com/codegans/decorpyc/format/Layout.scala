@@ -1,7 +1,7 @@
 package com.codegans.decorpyc.format
 
 import com.codegans.decorpyc.ast.{ArgumentInfo, ParameterInfo, PyExpr}
-import com.codegans.decorpyc.format.Layout.{Callback, Record, log}
+import com.codegans.decorpyc.format.Layout.{Callback, Record, log, possibleExclusiveCommandConflict}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
@@ -18,7 +18,11 @@ class Layout(doubleQuotedText: Boolean = true) {
 
   def printKeyword(line: Int, indent: Int, keyword: String, exclusive: Boolean = false): Layout = {
     if (exclusive && lines.get(line).exists(_.nonEmpty)) {
-      log.warn("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
+      if (possibleExclusiveCommandConflict.contains(keyword)) {
+        log.debug("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
+      } else {
+        log.warn("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
+      }
       this
     } else {
       rawPrint(line, Keyword(indent, id, keyword))
@@ -130,6 +134,7 @@ class Layout(doubleQuotedText: Boolean = true) {
 
 object Layout {
   private val log: Logger = LoggerFactory.getLogger(classOf[Layout])
+  private val possibleExclusiveCommandConflict: Seq[String] = Seq("pass", "return")
 
   type Record = (Int, Markup)
   type Callback = (Option[Record], Record) => Unit

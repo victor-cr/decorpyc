@@ -36,7 +36,7 @@ class Pickle(key: Option[Int], _source: ByteSource) {
       parser.execute(this, proto).get // TODO: If exception has to be hidden modify here
       read()
     } else {
-      log.info("End-of-input has been reached")
+      log.debug("End-of-input has been reached")
       this
     }
   }
@@ -45,7 +45,7 @@ class Pickle(key: Option[Int], _source: ByteSource) {
     val value = source.readByte()
     if (value < minProto || value > maxProto) throw new IllegalArgumentException(s"Unsupported protocol version v$proto")
     proto = Some(value)
-    log.info("Use serialization protocol v{}", value)
+    log.debug("Use serialization protocol v{}", value)
   }
 
   private def readStop(): Unit = if (stack.size != 1) {

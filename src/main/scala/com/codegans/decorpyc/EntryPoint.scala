@@ -2,49 +2,54 @@ package com.codegans.decorpyc
 
 import com.codegans.decorpyc.file.{ArchiveInfo, FileInfo}
 import com.codegans.decorpyc.util.ByteSource
+import org.rogach.scallop.{Compat, Scallop, ScallopConf, ScallopOption}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.{File, IOException}
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{FileSystems, FileVisitResult, Files, Path, PathMatcher, SimpleFileVisitor}
+import java.nio.file._
 import scala.collection.mutable.ListBuffer
 
 object EntryPoint {
   private val log: Logger = LoggerFactory.getLogger(getClass)
+  private lazy val artifact: String = Option(getClass.getPackage.getImplementationTitle).getOrElse("decorpyc")
+  private lazy val version: String = Option(getClass.getPackage.getImplementationVersion).getOrElse("0.0.0-DEBUG")
+  private val banner: String =
+    """
+      | #######################################################################################
+      | ## Decompiler for Ren'Py binaries.                                                   ##
+      | #######################################################################################
+      |
+      |""".stripMargin
 
   final def main(args: Array[String]): Unit = {
-    if (args.length != 2) {
-      log.debug("Invalid number of input arguments. Render help...")
-      printHelp()
-      return
-    }
+    val config = new Conf(args)
 
-    val paths = args.map(arg => new File(arg).getAbsoluteFile.getCanonicalFile).toList
-
-    val input = paths.head
-    val output = paths(1)
+    val output = config.output()
 
     val inputFiles: ListBuffer[File] = ListBuffer()
 
-    if (input.isFile) {
-      log.info("Prepare to decompile the file: {}", input.getAbsolutePath)
-      inputFiles.addOne(input)
-    } else if (input.isDirectory) {
-      log.info("Prepare to recursively search the directory: {}", input.getAbsolutePath)
-      val fs = FileSystems.getDefault
+    config.input().foreach { input =>
+      if (input.isFile) {
+        log.info("Prepare to decompile the file: {}", input.getAbsolutePath)
+        inputFiles.addOne(input)
+      } else if (input.isDirectory) {
+        log.info("Prepare to recursively search the directory: {}", input.getAbsolutePath)
+        val fs = FileSystems.getDefault
 
-      val visitor = new FileFinder(fs.getPathMatcher("glob:*.{rpyc,rpa}"))
+        val visitor = new FileFinder(fs.getPathMatcher("glob:*.{rpyc,rpa}"))
 
-      Files.walkFileTree(input.toPath, visitor)
+        Files.walkFileTree(input.toPath, visitor)
 
-      inputFiles.addAll(visitor.files)
-    } else {
-      log.warn("Cannot locate neither directory nor file: {}", input.getAbsolutePath)
-      return
+        inputFiles.addAll(visitor.files)
+      } else {
+        log.warn("Cannot locate neither directory nor file: {}", input.getAbsolutePath)
+        return
+      }
     }
 
     if (inputFiles.isEmpty) {
-      log.warn("Cannot locate neither RenPy compiled files nor archives: {}", input.getAbsolutePath)
+      log.warn("Cannot locate neither RenPy compiled files nor archives: {}", config.input())
       return
     }
 
@@ -76,6 +81,12 @@ object EntryPoint {
         result.getParentFile.mkdirs()
 
         fileInfo.decompiled.writeTo(result)
+
+        if (newName != fileInfo.name) {
+          log.info("Successfully wrote decompiled results to: {}", result.getAbsolutePath)
+        } else {
+          log.info("Successfully wrote extracted resource to: {}", result.getAbsolutePath)
+        }
       }
     }
 
@@ -91,16 +102,9 @@ object EntryPoint {
       result.getParentFile.mkdirs()
 
       fileInfo.decompiled.writeTo(result)
-    }
-  }
 
-  private def printHelp(): Unit = {
-    println("###############################################")
-    println("Usage:")
-    println(">> java -jar decorpyc-<version>.jar <input directory/file> <output directory>")
-    println("###############################################")
-    println("Example:")
-    println(">> java -jar decorpyc-0.1.0.jar 'MyCoolRenPy/game' 'MyCoolRenPy/output'")
+      log.info("Successfully wrote decompiled results to: {}", result.getAbsolutePath)
+    }
   }
 
   private class FileFinder(matcher: PathMatcher) extends SimpleFileVisitor[Path] {
@@ -125,5 +129,20 @@ object EntryPoint {
       if (exc != null) log.error("Visiting directory failed: {}", dir, exc)
       super.postVisitDirectory(dir, exc)
     }
+  }
+
+  class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
+    val help: ScallopOption[Boolean] = opt[Boolean](name = "help", short = '?', argName = "", descr = "Prints this help message and exits")
+    val version: ScallopOption[Boolean] = opt[Boolean](name = "version", short = 'v', argName = "", descr = "Prints application version and exits")
+    val output: ScallopOption[File] = opt[File](name = "output", short = 'o', descr = "Output directory for unpacked/decompiled files", argName = "dir", required = true)
+    val input: ScallopOption[List[File]] = trailArg[List[File]](descr = "Directories or files which has to be unpacked/decompiled", required = true)
+
+    version(EntryPoint.artifact + "-" + EntryPoint.version)
+    banner(EntryPoint.banner)
+    exitHandler = exitCode => {
+      if (exitCode != 0) println(s"For help use `--${help.name}` start argument")
+      Compat.exit(exitCode)
+    }
+    verify()
   }
 }

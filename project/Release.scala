@@ -4,7 +4,7 @@ object Release {
   private type TaskImplementation = String => String
 
   def fnReleaseVersion: TaskImplementation = { version =>
-    Version(version).map(_.withoutQualifier.string).getOrElse(versionFormatError(version))
+    Version(version).map(_.withoutQualifier.string + "-RELEASE").getOrElse(versionFormatError(version))
   }
 
   def fnNextReleaseVersion(releaseVersionBump: Version.Bump): TaskImplementation = { version =>

@@ -6,7 +6,7 @@ case class SLDisplayable(override val attributes: Map[String, _],
                          override val children: List[SLNode],
                          override val fileName: String,
                          override val lineNum: Int,
-                         name: String,
+                         name: Option[String],
                          positional: List[Option[PyExpr]],
                          keyword: Map[String, Option[PyExpr]]
                         ) extends SLNode with Attributes with ChildrenList[SLNode]
@@ -18,7 +18,7 @@ object SLDisplayable extends SLNodeFactory[SLDisplayable] {
   private val keyChildren: String = "children"
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): SLDisplayable = {
-    val name = attributes(keyName).asInstanceOf[String]
+    val name = context.transformString(attributes.get(keyName))
     val positional = attributes(keyPositional).asInstanceOf[List[_]].map(context.transformPyExpr)
     val keyword = attributes(keyKeyword).asInstanceOf[List[List[_]]].map { case (key: String) :: value :: Nil => key -> context.transformPyExpr(value) }.toMap
     val children = attributes(keyChildren).asInstanceOf[List[_]].flatMap(context.transformSL)

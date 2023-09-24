@@ -23,6 +23,10 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
   override def transformAST: PartialFunction[Any, List[ASTNode]] = {
     case None => Nil
     case Some(value) => transformAST(value)
+    case SetState(NewInstance(id, GlobalFunction("renpy.ast", className), Nil), (_: Map[Any, Any]) :: (attributes: Map[String, _]) :: Nil) =>
+      val fileName = attributes("filename").asInstanceOf[String]
+      val lineNum = attributes("linenumber").asInstanceOf[Int]
+      List(storeInstance(id, transformAST(className, attributes - "filename" - "linenumber", fileName, lineNum)))
     case SetUpdate(NewInstance(id, GlobalFunction("renpy.ast", className), Nil), attributes: Map[String, _]) =>
       val fileName = attributes("filename").asInstanceOf[String]
       val lineNum = attributes("linenumber").asInstanceOf[Int]
@@ -113,6 +117,10 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case value => throw new IllegalArgumentException(s"Not valid string object: $value")
   }
 
+  override def transformList: PartialFunction[Any, List[String]] = super.transformStringList.orElse {
+    case value => throw new IllegalArgumentException(s"Not valid generic list: $value")
+  }
+
   override def transformStringList: PartialFunction[Any, List[String]] = super.transformStringList.orElse {
     case value => throw new IllegalArgumentException(s"Not valid string list: $value")
   }
@@ -144,7 +152,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
 
   private def transformParameterInfo(attributes: Map[String, _]): ParameterInfo = {
     val params = attributes("parameters").asInstanceOf[List[_]].map { case (l: String) :: r :: Nil => l -> transformPyExpr(r) }.toMap
-    val extra = attributes("extrakw").asInstanceOf[Option[_]]
+    val extra = transformString(attributes("extrakw"))
     val extraPos = attributes("extrapos").asInstanceOf[Option[_]]
     val positional = transformStringList(attributes.get("positional")) // List of parameter names
     val positionalOnly = attributes.getOrElse("positional_only", Nil).asInstanceOf[List[_]]
@@ -167,6 +175,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "Menu" => interceptor.replace(Menu(this, attributes, fileName, lineNum))
     case "Say" => interceptor.replace(Say(this, attributes, fileName, lineNum))
     case "Translate" => interceptor.replace(Translate(this, attributes, fileName, lineNum))
+    case "TranslateString" => interceptor.replace(TranslateString(this, attributes, fileName, lineNum))
     case "EndTranslate" => interceptor.replace(EndTranslate(this, attributes, fileName, lineNum))
     case "Call" => interceptor.replace(Call(this, attributes, fileName, lineNum))
     case "Pass" => interceptor.replace(Pass(this, attributes, fileName, lineNum))

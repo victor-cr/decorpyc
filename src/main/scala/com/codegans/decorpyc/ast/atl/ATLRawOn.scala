@@ -14,7 +14,7 @@ object ATLRawOn extends ATLNodeFactory[ATLRawOn] {
   private val keyHandlers: String = "handlers"
 
   override def apply(context: ast.NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): ATLRawOn = {
-    val children = attributes(keyHandlers).asInstanceOf[Map[String, _]].map { case (key, value) => key -> context.transformATL(value).head }
+    val children = context.transformStringMap(attributes(keyHandlers)).map { case (key, value) => key -> context.transformATL(value).head }
 
     new ATLRawOn(attributes - keyHandlers, children, fileName, lineNum)
   }

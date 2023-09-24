@@ -114,9 +114,13 @@ class Pickle(key: Option[Int], _source: ByteSource) {
 
   private def readBigInt(sizeOf: SizeOf): Unit = {
     val len = length(sizeOf)
-    val value = source.readBigInt(len)
-    //    val decoded = key.map(value ^ _).getOrElse(value)
-    stack.push(value)
+    if (len == 4) {
+      readSignedInt32()
+    } else {
+      val value = source.readBigInt(len)
+      //    val decoded = key.map(value ^ _).getOrElse(value)
+      stack.push(value)
+    }
   }
 
   private def readInt(sizeOf: SizeOf): Unit = stack.push(length(sizeOf))

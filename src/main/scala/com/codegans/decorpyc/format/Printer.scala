@@ -16,7 +16,7 @@ import scala.collection.mutable.ListBuffer
 class Printer(layout: Layout) {
   private var currentPriority: Int = 0
 
-  def start(body: Body): Unit = {
+  def start(body: Body): Unit = if (body.children.nonEmpty) {
     val priorities = body.children.filter(_.isInstanceOf[Init]).map(_.asInstanceOf[Init]).map(_.priority).distinct
     val startLine = body.children.head.lineNum
 
@@ -225,6 +225,8 @@ class Printer(layout: Layout) {
         layout.printExpr(expectedLine, indent + 1, value)
       }
 
+    case Scene(_, _, expectedLine, _, Nil) =>
+      layout.printKeyword(expectedLine, indent, "scene", exclusive = true)
     case Scene(_, _, expectedLine, _, (head: List[String]) :: _) =>
       layout.printKeyword(expectedLine, indent, "scene", exclusive = true)
       head.foreach(layout.printExpr(expectedLine, indent, _))
@@ -236,9 +238,12 @@ class Printer(layout: Layout) {
       children.foreach((node: Node) => write(node, indent + 1))
 
     case SLDisplayable(_, children, _, expectedLine, name, positional, keyword) =>
-      layout.printExpr(expectedLine, indent, name)
+      name.foreach(layout.printExpr(expectedLine, indent, _))
       positional.foreach { case Some(PyExpr(expression)) => layout.printExpr(expectedLine, indent + 1, expression) }
-      keyword.foreach { case (key, Some(PyExpr(expression))) => layout.printExpr(expectedLine, indent + 1, key).printExpr(expectedLine, indent + 1, expression) }
+      keyword.foreach {
+        case (key, None) => layout.printExpr(expectedLine, indent + 1, key)
+        case (key, Some(PyExpr(expression))) => layout.printExpr(expectedLine, indent + 1, key).printExpr(expectedLine, indent + 1, expression)
+      }
       children.foreach((node: Node) => write(node, indent + 1))
 
     case SLIf(_, _, expectedLine, entries) =>
@@ -294,10 +299,15 @@ class Printer(layout: Layout) {
       layout.printKeyword(expectedLine, indent, "hide")
       head.foreach(layout.printExpr(expectedLine, indent, _))
 
-    case Translate(_, children, _, expectedLine, id, _, _) =>
+    case Translate(_, children, _, expectedLine, id, _, maybeLang) =>
       layout.printKeyword(expectedLine, indent, "translate", exclusive = true)
+      maybeLang.foreach(layout.printExpr(expectedLine, indent, _))
       layout.printExpr(expectedLine, indent, id)
       children.foreach((node: Node) => write(node, indent + 1))
+
+    case tmp@TranslateString(_, _, expectedLine, line, _, _, lang, newLine) =>
+      //TODO implement
+      log.debug("Ignore: {}", tmp)
 
     case Transform(_, atl, _, expectedLine, variable, params) =>
       layout.printKeyword(expectedLine, indent, "transform", exclusive = true)
@@ -305,8 +315,9 @@ class Printer(layout: Layout) {
       params.foreach(layout.printArgs(expectedLine, indent, _))
       atl.foreach(writeATL(_, indent, initial = true))
 
-    case EndTranslate(_, _, expectedLine) =>
-      layout.printKeyword(expectedLine, indent, "end translate")
+    case tmp@EndTranslate(_, _, expectedLine) =>
+      log.debug("Ignore: {}", tmp)
+//      layout.printKeyword(expectedLine, indent, "end translate")
 
   }
 

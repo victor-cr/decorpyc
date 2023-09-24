@@ -90,6 +90,12 @@ package object ast {
       case Some(value) => transformString(value)
     }
 
+    def transformList: PartialFunction[Any, List[_]] = {
+      case value: List[_] => value
+      case None => Nil
+      case Some(value) => transformList(value)
+    }
+
     def transformStringList: PartialFunction[Any, List[String]] = {
       case value: String => List(value)
       case value: List[String] => value

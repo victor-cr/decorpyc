@@ -77,42 +77,7 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, text)
       children.foreach((node: Node) => write(node, indent + 1))
 
-    case Menu(_, children, _, expectedLine, NodeRef(Label(_, Nil, _, _, labelName, params)), caption, args, withA, set, itemArgs) =>
-      layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
-      args.foreach(layout.printArgs(expectedLine, indent, _))
-      layout.printExpr(expectedLine, indent, labelName)
-      params.foreach(layout.printArgs(expectedLine, indent, _))
-      set.foreach {
-        case DebugPyExpr(e, _, lineNum, _) =>
-          layout.printKeyword(lineNum, indent + 1, "set").printExpr(lineNum, indent + 1, e)
-        case PyExpr(e) =>
-          layout.printKeyword(expectedLine, indent + 1, "set").printExpr(expectedLine, indent + 1, e)
-      }
-      caption.foreach(e => layout.printText(expectedLine + 1, indent + 1, e))
-      children.foreach((node: Node) => write(node, indent + 1))
-    case Menu(_, children, _, expectedLine, NodeRef(say: Say), caption, args, withA, set, itemArgs) =>
-      layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
-      args.foreach(layout.printArgs(expectedLine, indent, _))
-      set.foreach {
-        case DebugPyExpr(e, _, lineNum, _) =>
-          layout.printKeyword(lineNum, indent + 1, "set").printExpr(lineNum, indent + 1, e)
-        case PyExpr(e) =>
-          layout.printKeyword(expectedLine, indent + 1, "set").printExpr(expectedLine, indent + 1, e)
-      }
-      caption.foreach(e => layout.printText(expectedLine + 1, indent + 1, e))
-      write(say.copy(referenced = false), indent + 1)
-      children.foreach((node: Node) => write(node, indent + 1))
-    case Menu(_, children, _, expectedLine, _, caption, args, _, set, _) =>
-      layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
-      args.foreach(layout.printArgs(expectedLine, indent, _))
-      set.foreach {
-        case DebugPyExpr(e, _, lineNum, _) =>
-          layout.printKeyword(lineNum, indent + 1, "set").printExpr(lineNum, indent + 1, e)
-        case PyExpr(e) =>
-          layout.printKeyword(expectedLine, indent + 1, "set").printExpr(expectedLine, indent + 1, e)
-      }
-      caption.foreach(e => layout.printText(expectedLine + 1, indent + 1, e))
-      children.foreach((node: Node) => write(node, indent + 1))
+    case menu: Menu => writeMenu(menu, indent)
 
     case MenuItem(children, _, expectedLine, text, None, args, _, _) =>
       layout.printText(expectedLine, indent, text)
@@ -125,22 +90,7 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, condition)
       children.foreach((node: Node) => write(node, indent + 1))
 
-    case Python(_, _, _, _, None) =>
-      log.warn("Ignore empty code block")
-    case Python(_, _, expectedLine, _, Some(OnelinerPyCode(PyExpr(expression), _, _))) =>
-      log.debug("Write one-liner Python instruction")
-      layout.printKey(expectedLine, indent, "$")
-      layout.printExpr(expectedLine, indent, expression)
-    case Python(_, _, expectedLine, prefix, Some(BlockPyCode(_, mode, _, lines))) =>
-      log.debug("Write Python code block")
-      if (mode.isBlank || mode == "exec" || mode == "eval") {
-        layout.printKeyword(expectedLine, indent, "python")
-      } else {
-        layout.printKeyword(expectedLine, indent, "python")
-        layout.printExpr(expectedLine, indent, mode)
-        prefix.foreach(layout.printExpr(expectedLine, indent, _))
-      }
-      lines.foreach { case (lineNum, code) => layout.printExpr(lineNum + expectedLine, indent + 1, code) }
+    case Python(_, _, expectedLine, prefix, code) => writePython(code, prefix, expectedLine, indent)
 
     case Say(_, _, expectedLine, text, _, _, who, withA, maybeArgs, attrs, tempAttrs, false, false) =>
       who.foreach(layout.printExpr(expectedLine, indent, _))
@@ -240,9 +190,13 @@ class Printer(layout: Layout) {
         layout.printKeyword(expectedLine, indent, "is")
         layout.printExpr(expectedLine, indent, e)
       }
-      props.foreach { case (key, Some(PyExpr(value))) =>
-        layout.printExpr(expectedLine, indent + 1, key)
-        layout.printExpr(expectedLine, indent + 1, value)
+      props.foreach {
+        case (key, Some(DebugPyExpr(value, _, lineNum, _))) =>
+          layout.printExpr(lineNum, indent + 1, key)
+          layout.printExpr(lineNum, indent + 1, value)
+        case (key, Some(PyExpr(value))) =>
+          layout.printExpr(expectedLine, indent + 1, key)
+          layout.printExpr(expectedLine, indent + 1, value)
       }
 
     case Scene(_, _, expectedLine, _, IMSpec(names, _, _, atList, _, _, _)) =>
@@ -261,10 +215,23 @@ class Printer(layout: Layout) {
 
     case SLDisplayable(_, children, _, expectedLine, name, positional, keyword) =>
       name.foreach(layout.printExpr(expectedLine, indent, _))
-      positional.foreach { case Some(PyExpr(expression)) => layout.printExpr(expectedLine, indent + 1, expression) }
+      var line = expectedLine + 1
+      positional.foreach {
+        case Some(DebugPyExpr(expression, _, lineNum, _)) =>
+          layout.printExpr(lineNum, indent + 1, expression)
+        case Some(PyExpr(expression)) =>
+          layout.printExpr(line, indent + 1, expression)
+          line += 1
+      }
       keyword.foreach {
-        case (key, None) => layout.printExpr(expectedLine, indent + 1, key)
-        case (key, Some(PyExpr(expression))) => layout.printExpr(expectedLine, indent + 1, key).printExpr(expectedLine, indent + 1, expression)
+        case (key, None) =>
+          layout.printExpr(line, indent + 1, key)
+          line += 1
+        case (key, Some(DebugPyExpr(expression, _, lineNum, _))) =>
+          layout.printExpr(lineNum, indent + 1, key).printExpr(lineNum, indent + 1, expression)
+        case (key, Some(PyExpr(expression))) =>
+          layout.printExpr(line, indent + 1, key).printExpr(line, indent + 1, expression)
+          line += 1
       }
       children.foreach((node: Node) => write(node, indent + 1))
 
@@ -305,8 +272,7 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, "=")
       layout.printExpr(expectedLine, indent, expression.map(_.expression).getOrElse("None"))
 
-    case SLPython(_, _, expectedLine, code) =>
-      layout.printKeyword(expectedLine, indent, "python")
+    case SLPython(_, _, expectedLine, code) => writePython(code, None, expectedLine, indent)
 
     case SLBlock(_, children, _, expectedLine, keyword) =>
       keyword.foreach { case (key, Some(PyExpr(expression))) => layout.printExpr(expectedLine, indent, key).printExpr(expectedLine, indent, expression) }
@@ -413,6 +379,51 @@ class Printer(layout: Layout) {
           layout.printKeyword(lineR, indent, "with")
           layout.printExpr(lineR, indent, exprR)
       }
+  }
+
+  private def writePython(code: Option[PyCode], prefix: Option[String], expectedLine: Int, indent: Int): Unit = {
+    code.foreach {
+      case OnelinerPyCode(PyExpr(expression), _, _) =>
+        log.debug("Write one-liner Python instruction")
+        layout.printKey(expectedLine, indent, "$")
+        layout.printExpr(expectedLine, indent, expression)
+      case BlockPyCode(_, mode, _, lines) =>
+        log.debug("Write Python code block")
+        if (mode.isBlank || mode == "exec" || mode == "eval") {
+          layout.printKeyword(expectedLine, indent, "python")
+        } else {
+          layout.printKeyword(expectedLine, indent, "python")
+          layout.printExpr(expectedLine, indent, mode)
+          prefix.foreach(layout.printExpr(expectedLine, indent, _))
+        }
+        lines.foreach { case (lineNum, code) => layout.printExpr(lineNum + expectedLine, indent + 1, code) }
+    }
+  }
+
+  private def writeMenu(menu: Menu, indent: Int): Unit = {
+    val expectedLine = menu.lineNum
+    var line = expectedLine
+
+    layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
+    menu.args.foreach(layout.printArgs(expectedLine, indent, _))
+    menu.startStatement.ref match {
+      case Label(_, Nil, _, _, labelName, params) =>
+        layout.printExpr(expectedLine, indent, labelName)
+        params.foreach(layout.printArgs(expectedLine, indent, _))
+      case say: Say =>
+        write(say.copy(referenced = false), indent + 1)
+      case `menu` =>
+        log.debug("Self reference. Do nothing.")
+    }
+    menu.set.foreach {
+      case DebugPyExpr(e, _, lineNum, _) =>
+        layout.printKeyword(lineNum, indent + 1, "set").printExpr(lineNum, indent + 1, e)
+        line = lineNum
+      case PyExpr(e) =>
+        layout.printKeyword(expectedLine, indent + 1, "set").printExpr(expectedLine, indent + 1, e)
+    }
+    menu.caption.foreach(e => layout.printText(line + 1, indent + 1, e))
+    menu.children.foreach((node: Node) => write(node, indent + 1))
   }
 }
 

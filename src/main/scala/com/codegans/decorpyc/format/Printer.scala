@@ -85,15 +85,33 @@ class Printer(layout: Layout) {
       set.foreach {
         case DebugPyExpr(e, _, lineNum, _) =>
           layout.printKeyword(lineNum, indent + 1, "set").printExpr(lineNum, indent + 1, e)
-          caption.foreach(e => layout.printText(lineNum + 1, indent + 1, e))
         case PyExpr(e) =>
           layout.printKeyword(expectedLine, indent + 1, "set").printExpr(expectedLine, indent + 1, e)
-          caption.foreach(e => layout.printText(expectedLine + 1, indent + 1, e))
       }
+      caption.foreach(e => layout.printText(expectedLine + 1, indent + 1, e))
       children.foreach((node: Node) => write(node, indent + 1))
-    case Menu(_, children, _, expectedLine, _, caption, args, _, _, _) =>
+    case Menu(_, children, _, expectedLine, NodeRef(say: Say), caption, args, withA, set, itemArgs) =>
       layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
       args.foreach(layout.printArgs(expectedLine, indent, _))
+      set.foreach {
+        case DebugPyExpr(e, _, lineNum, _) =>
+          layout.printKeyword(lineNum, indent + 1, "set").printExpr(lineNum, indent + 1, e)
+        case PyExpr(e) =>
+          layout.printKeyword(expectedLine, indent + 1, "set").printExpr(expectedLine, indent + 1, e)
+      }
+      caption.foreach(e => layout.printText(expectedLine + 1, indent + 1, e))
+      write(say.copy(referenced = false), indent + 1)
+      children.foreach((node: Node) => write(node, indent + 1))
+    case Menu(_, children, _, expectedLine, _, caption, args, _, set, _) =>
+      layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
+      args.foreach(layout.printArgs(expectedLine, indent, _))
+      set.foreach {
+        case DebugPyExpr(e, _, lineNum, _) =>
+          layout.printKeyword(lineNum, indent + 1, "set").printExpr(lineNum, indent + 1, e)
+        case PyExpr(e) =>
+          layout.printKeyword(expectedLine, indent + 1, "set").printExpr(expectedLine, indent + 1, e)
+      }
+      caption.foreach(e => layout.printText(expectedLine + 1, indent + 1, e))
       children.foreach((node: Node) => write(node, indent + 1))
 
     case MenuItem(children, _, expectedLine, text, None, args, _, _) =>
@@ -124,7 +142,7 @@ class Printer(layout: Layout) {
       }
       lines.foreach { case (lineNum, code) => layout.printExpr(lineNum + expectedLine, indent + 1, code) }
 
-    case Say(_, _, expectedLine, text, _, _, who, withA, maybeArgs, attrs, tempAttrs, false) =>
+    case Say(_, _, expectedLine, text, _, _, who, withA, maybeArgs, attrs, tempAttrs, false, false) =>
       who.foreach(layout.printExpr(expectedLine, indent, _))
       attrs.foreach(attr => layout.printExpr(expectedLine, indent, attr))
       if (tempAttrs.nonEmpty) layout.printExpr(expectedLine, indent, "@")
@@ -132,7 +150,7 @@ class Printer(layout: Layout) {
       layout.printText(expectedLine, indent, text)
       maybeArgs.foreach(layout.printArgs(expectedLine, indent, _))
       withA.foreach(e => layout.printKeyword(expectedLine, indent, "with").printExpr(expectedLine, indent, e))
-    case Say(_, _, expectedLine, text, _, _, who, withA, maybeArgs, attrs, tempAttrs, true) =>
+    case Say(_, _, expectedLine, text, _, _, who, withA, maybeArgs, attrs, tempAttrs, true, false) =>
       who.foreach(layout.printExpr(expectedLine, indent, _))
       attrs.foreach(attr => layout.printExpr(expectedLine, indent, attr))
       if (tempAttrs.nonEmpty) layout.printExpr(expectedLine, indent, "@")
@@ -140,6 +158,8 @@ class Printer(layout: Layout) {
       layout.printMultilineText(expectedLine, indent, text)
       maybeArgs.foreach(layout.printArgs(expectedLine, indent, _))
       withA.foreach(e => layout.printKeyword(expectedLine, indent, "with").printExpr(expectedLine, indent, e))
+    case tmp@Say(_, _, _, _, _, _, _, _, _, _, _, _, true) =>
+      log.debug("Ignore referenced element: {}", tmp)
 
     case Jump(_, _, expectedLine, false, PyExpr(target)) =>
       layout.printKeyword(expectedLine, indent, "jump", exclusive = true)
@@ -225,11 +245,13 @@ class Printer(layout: Layout) {
         layout.printExpr(expectedLine, indent + 1, value)
       }
 
-    case Scene(_, _, expectedLine, _, Nil) =>
+    case Scene(_, _, expectedLine, _, IMSpec(names, _, _, atList, _, _, _)) =>
       layout.printKeyword(expectedLine, indent, "scene", exclusive = true)
-    case Scene(_, _, expectedLine, _, (head: List[String]) :: _) =>
-      layout.printKeyword(expectedLine, indent, "scene", exclusive = true)
-      head.foreach(layout.printExpr(expectedLine, indent, _))
+      names.foreach(layout.printExpr(expectedLine, indent, _))
+      if (atList.nonEmpty) {
+        layout.printKeyword(expectedLine, indent, "at")
+        atList.foreach(e => layout.printExpr(expectedLine, indent, e.expression))
+      }
 
     case Screen(_, _, expectedLine, SLScreen(_, children, _, _, name, _, _, params) :: Nil) =>
       layout.printKeyword(expectedLine, indent, "screen", exclusive = true)
@@ -290,14 +312,22 @@ class Printer(layout: Layout) {
       keyword.foreach { case (key, Some(PyExpr(expression))) => layout.printExpr(expectedLine, indent, key).printExpr(expectedLine, indent, expression) }
       children.foreach((node: Node) => write(node, indent))
 
-    case Show(_, atl, _, expectedLine, (head: List[String]) :: _) =>
+    case Show(_, atl, _, expectedLine, IMSpec(names, _, _, atList, _, _, _)) =>
       layout.printKeyword(expectedLine, indent, "show")
-      head.foreach(layout.printExpr(expectedLine, indent, _))
+      names.foreach(layout.printExpr(expectedLine, indent, _))
+      if (atList.nonEmpty) {
+        layout.printKeyword(expectedLine, indent, "at")
+        atList.foreach(e => layout.printExpr(expectedLine, indent, e.expression))
+      }
       atl.foreach(writeATL(_, indent, initial = true))
 
-    case Hide(_, _, expectedLine, (head: List[String]) :: _) =>
+    case Hide(_, _, expectedLine, IMSpec(names, _, _, atList, _, _, _)) =>
       layout.printKeyword(expectedLine, indent, "hide")
-      head.foreach(layout.printExpr(expectedLine, indent, _))
+      names.foreach(layout.printExpr(expectedLine, indent, _))
+      if (atList.nonEmpty) {
+        layout.printKeyword(expectedLine, indent, "at")
+        atList.foreach(e => layout.printExpr(expectedLine, indent, e.expression))
+      }
 
     case Translate(_, children, _, expectedLine, id, _, maybeLang) =>
       layout.printKeyword(expectedLine, indent, "translate", exclusive = true)
@@ -317,7 +347,7 @@ class Printer(layout: Layout) {
 
     case tmp@EndTranslate(_, _, expectedLine) =>
       log.debug("Ignore: {}", tmp)
-//      layout.printKeyword(expectedLine, indent, "end translate")
+    //      layout.printKeyword(expectedLine, indent, "end translate")
 
   }
 

@@ -12,7 +12,8 @@ case class Say(
                 args: Option[ArgumentInfo],
                 attrs: List[String],
                 tempAttrs: List[String],
-                multiline: Boolean
+                multiline: Boolean,
+                referenced: Boolean
               ) extends ASTNode with Attributes
 
 object Say extends ASTNodeFactory[Say] {
@@ -24,6 +25,7 @@ object Say extends ASTNodeFactory[Say] {
   private val keyWhat: String = "what"
   private val keyInteract: String = "interact"
   private val keyWhoFast: String = "who_fast"
+  private val keyStatementStart: String = "statement_start"
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): Say = {
     val withA = context.transformPyExpr(attributes(keyWithA))
@@ -34,7 +36,8 @@ object Say extends ASTNodeFactory[Say] {
     val what = attributes(keyWhat).asInstanceOf[String]
     val interact = attributes(keyInteract).asInstanceOf[Boolean]
     val whoFast = attributes(keyWhoFast).asInstanceOf[Boolean]
+    val referenced = attributes.contains(keyStatementStart)
 
-    new Say(attributes - keyWithA - keyWho - keyAttributes - keyTemporaryAttributes - keyArguments - keyWhat - keyInteract - keyWhoFast, fileName, lineNum, what, interact, whoFast, who, withA, args, attrs, tempAttrs, multiline = false)
+    new Say(attributes - keyWithA - keyWho - keyAttributes - keyTemporaryAttributes - keyArguments - keyWhat - keyInteract - keyWhoFast, fileName, lineNum, what, interact, whoFast, who, withA, args, attrs, tempAttrs, multiline = false, referenced)
   }
 }

@@ -167,4 +167,51 @@ package object ast {
                           version: Int
                          ) extends Node
 
+  case class IMSpec(name: List[String],
+                    expression: Option[PyExpr],
+                    tag: Option[PyExpr],
+                    atList: List[PyExpr],
+                    layer: Option[PyExpr],
+                    zOrder: Option[PyExpr],
+                    behind: List[PyExpr])
+
+  object IMSpec {
+    def apply(context: NodeContext, params: List[_]): IMSpec = params match {
+      case Nil =>
+        new IMSpec(Nil, None, None, Nil, None, None, Nil)
+        
+      case (name: List[String]) :: (atList: List[_]) :: (layer: Option[_]) :: Nil =>
+        new IMSpec(
+          name,
+          None,
+          None,
+          atList.flatMap(context.transformPyExpr),
+          layer.flatMap(context.transformPyExpr),
+          None,
+          Nil
+        )
+
+      case (name: List[String]) :: (expression: Option[_]) :: (tag: Option[_]) :: (atList: List[_]) :: (layer: Option[_]) :: (zOrder: Option[_]) :: Nil =>
+        new IMSpec(
+          name,
+          expression.flatMap(context.transformPyExpr),
+          tag.flatMap(context.transformPyExpr),
+          atList.flatMap(context.transformPyExpr),
+          layer.flatMap(context.transformPyExpr),
+          zOrder.flatMap(context.transformPyExpr),
+          Nil
+        )
+
+      case (name: List[String]) :: (expression: Option[_]) :: (tag: Option[_]) :: (atList: List[_]) :: (layer: Option[_]) :: (zOrder: Option[_]) :: (behind: List[_]) :: Nil =>
+        new IMSpec(
+          name,
+          expression.flatMap(context.transformPyExpr),
+          tag.flatMap(context.transformPyExpr),
+          atList.flatMap(context.transformPyExpr),
+          layer.flatMap(context.transformPyExpr),
+          zOrder.flatMap(context.transformPyExpr),
+          behind.flatMap(context.transformPyExpr)
+        )
+    }
+  }
 }

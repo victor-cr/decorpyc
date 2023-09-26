@@ -74,15 +74,13 @@ object EntryPoint {
       val archiveInfo = ArchiveInfo(source)
 
       archiveInfo.files.foreach { fileInfo =>
-        val newName = if (fileInfo.name.endsWith(".rpyc")) fileInfo.name.stripSuffix("c") else fileInfo.name
-
-        val result = new File(output, newName)
+        val result = new File(output, fileInfo.name)
 
         result.getParentFile.mkdirs()
 
         fileInfo.decompiled.writeTo(result)
 
-        if (newName != fileInfo.name) {
+        if (fileInfo.name.endsWith(".rpyc")) {
           log.info("Successfully wrote decompiled results to: {}", result.getAbsolutePath)
         } else {
           log.info("Successfully wrote extracted resource to: {}", result.getAbsolutePath)

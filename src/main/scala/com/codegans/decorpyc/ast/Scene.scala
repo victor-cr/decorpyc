@@ -4,7 +4,7 @@ case class Scene(override val attributes: Map[String, _],
                  override val fileName: String,
                  override val lineNum: Int,
                  layer: Option[String],
-                 imSpec: List[_]
+                 imSpec: IMSpec
                 ) extends ASTNode with Attributes
 
 object Scene extends ASTNodeFactory[Scene] {
@@ -13,7 +13,7 @@ object Scene extends ASTNodeFactory[Scene] {
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): Scene = {
     val layer = context.transformString(attributes(keyLayer))
-    val imspec = context.transformList(attributes(keyIMSpec))
+    val imspec = IMSpec(context, context.transformList(attributes(keyIMSpec)))
 
     new Scene(attributes - keyLayer - keyIMSpec, fileName, lineNum, layer, imspec)
   }

@@ -45,7 +45,7 @@ object MultilineSayAspect {
       var lastSay: Option[Say] = None
 
       children.foreach {
-        case say@Say(_, _, lineNum, _, _, _, _, _, _, _, _, false) if sayMap.contains(lineNum) =>
+        case say@Say(_, _, lineNum, _, _, _, _, _, _, _, _, false, false) if sayMap.contains(lineNum) =>
           val empty = say.copy(attributes = Map(), what = "")
 
           sayMap.get(lineNum).filterNot(_ => lastSay.contains(empty)).foreach { case list: List[Say] =>

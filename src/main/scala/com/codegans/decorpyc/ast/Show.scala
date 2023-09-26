@@ -6,7 +6,7 @@ case class Show(override val attributes: Map[String, _],
                 override val atl: List[ATLNode],
                 override val fileName: String,
                 override val lineNum: Int,
-                imSpec: List[_]
+                imSpec: IMSpec
                ) extends ASTNode with Attributes with Transformations
 
 object Show extends ASTNodeFactory[Show] {
@@ -15,7 +15,7 @@ object Show extends ASTNodeFactory[Show] {
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): Show = {
     val atl = context.transformATL(attributes.get(keyATL))
-    val imspec = attributes(keyIMSpec).asInstanceOf[List[_]]
+    val imspec = IMSpec(context, context.transformList(attributes(keyIMSpec)))
 
     new Show(attributes - keyATL - keyIMSpec, atl, fileName, lineNum, imspec)
   }

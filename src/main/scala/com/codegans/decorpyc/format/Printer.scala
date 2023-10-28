@@ -334,11 +334,12 @@ class Printer(layout: Layout) {
     case ATLRawChild(_, children, _, expectedLine) =>
       children.foreach(writeATL(_, indent))
 
-    case ATLRawChoice(_, children, _, _) =>
-      children.foreach { item =>
-        layout.printKeyword(item.atl.lineNum - 1, indent, "choice", exclusive = true)
-        if (item.chance != "1.0") layout.printExpr(item.atl.lineNum - 1, indent, item.chance)
-        writeATL(item.atl, indent + 1)
+    case ATLRawChoice(_, items, _, _) =>
+      items.foreach {
+        case ATLRawChoice.Item(chance, atl) =>
+          layout.printKeyword(atl.lineNum - 1, indent, "choice", exclusive = true)
+          if (chance != "1.0") layout.printExpr(atl.lineNum - 1, indent, chance)
+          writeATL(atl, indent + 1, initial = true)
       }
 
     case ATLRawParallel(_, children, _, expectedLine) =>

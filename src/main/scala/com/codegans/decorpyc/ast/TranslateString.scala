@@ -20,7 +20,7 @@ object TranslateString extends ASTNodeFactory[TranslateString] {
     val newLoc = attributes(keyNewloc).asInstanceOf[List[_]]
     val line = attributes(keyOld).asInstanceOf[String]
     val newLine = attributes(keyNew).asInstanceOf[String]
-    val language = attributes(keyLanguage).asInstanceOf[String]
+    val language = context.transformString(attributes(keyLanguage)).getOrElse("english")
 
     new TranslateString(attributes - keyNewloc - keyNew - keyOld - keyLanguage, fileName, lineNum, line, newLoc.head.asInstanceOf[String], newLoc(1).asInstanceOf[Int], language, newLine)
   }

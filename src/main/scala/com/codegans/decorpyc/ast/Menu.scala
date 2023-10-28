@@ -7,7 +7,7 @@ case class Menu(
                  override val children: List[MenuItem],
                  override val fileName: String,
                  override val lineNum: Int,
-                 startStatement: NodeRef,
+                 startStatement: Option[NodeRef],
                  caption: Option[String],
                  args: Option[ArgumentInfo],
                  withA: Option[PyExpr],
@@ -27,8 +27,8 @@ object Menu extends ASTNodeFactory[Menu] {
     val withA = context.transformPyExpr(attributes(keyWithA))
     val set = context.transformPyExpr(attributes.get(keySet))
     val args = context.transformArgumentInfo(attributes.get(keyArguments))
-    val itemArgs = attributes(keyItemArguments).asInstanceOf[List[_]].map(context.transformArgumentInfo)
-    val startStatement = context.ref(attributes(keyStatementStart))
+    val itemArgs = context.transformList(attributes.get(keyItemArguments)).map(context.transformArgumentInfo)
+    val startStatement = attributes.get(keyStatementStart).map(context.ref)
     val hasCaption = attributes(keyHasCaption).asInstanceOf[Boolean]
 
     val children: ListBuffer[MenuItem] = new ListBuffer()
@@ -40,6 +40,9 @@ object Menu extends ASTNodeFactory[Menu] {
 
     attributes(keyItems).asInstanceOf[List[_]].zipWithIndex.foreach {
       case ((text: String) :: "True" :: None :: Nil, 0) if hasCaption =>
+        lastLine += 1
+        caption = Some(text)
+      case ((text: String) :: "True" :: None :: Nil, _) if hasCaption =>
         lastLine += 1
         caption = Some(text)
       case ((text: String) :: condition :: (block: List[_]) :: Nil, i) =>

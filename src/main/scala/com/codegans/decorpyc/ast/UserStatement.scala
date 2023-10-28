@@ -19,8 +19,8 @@ object UserStatement extends ASTNodeFactory[UserStatement] {
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): UserStatement = {
     val children = attributes(keyBlock).asInstanceOf[List[_]].flatMap(context.transformAST)
-    val parsed = attributes(keyParsed).asInstanceOf[List[_]]
-    val subParses = attributes(keySubParses).asInstanceOf[List[_]]
+    val parsed = context.transformList(attributes(keyParsed))
+    val subParses = context.transformList(attributes.get(keySubParses))
     val translatable = attributes(keyTranslatable).asInstanceOf[Boolean]
     val line = attributes(keyLine).asInstanceOf[String]
 

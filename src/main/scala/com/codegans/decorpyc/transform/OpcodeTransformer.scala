@@ -17,6 +17,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
 
   override def ref(instance: Any): NodeRef = instance match {
     case NewInstance(id, _, _) => ref(id)
+    case node: Node => new NodeRef(node)
     case _ => throw new IllegalArgumentException(s"Unknown instance identifier: $instance")
   }
 
@@ -192,6 +193,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
   private def transformATL(renpyType: String, attributes: Map[String, _], fileName: String, lineNum: Int): ATLNode = (renpyType: @switch) match {
     case "RawBlock" => interceptor.replace(ATLRawBlock(this, attributes, fileName, lineNum))
     case "RawChild" => interceptor.replace(ATLRawChild(this, attributes, fileName, lineNum))
+    case "RawChoice" => interceptor.replace(ATLRawChoice(this, attributes, fileName, lineNum))
     case "RawRepeat" => interceptor.replace(ATLRawRepeat(this, attributes, fileName, lineNum))
     case "RawFunction" => interceptor.replace(ATLRawFunction(this, attributes, fileName, lineNum))
     case "RawOn" => interceptor.replace(ATLRawOn(this, attributes, fileName, lineNum))

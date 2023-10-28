@@ -118,8 +118,8 @@ class Pickle(key: Option[Int], _source: ByteSource) {
       readSignedInt32()
     } else {
       val value = source.readBigInt(len)
-      //    val decoded = key.map(value ^ _).getOrElse(value)
-      stack.push(value)
+      val decoded = key.map(value ^ _).getOrElse(value)
+      stack.push(decoded)
     }
   }
 
@@ -204,6 +204,8 @@ object Pickle {
     stack.pop() match {
       case (attributes: Map[String, _]) :: (list: List[_]) :: Nil => OpcodeRoot(attributes, list)
       case index: Map[String, _] => OpcodeRoot(index, Nil)
+      case MapInstanceWithData(MapInstanceWithData(map: Map[String, _], data1: Map[String, _]), data2: Map[String, _]) => OpcodeRoot(map ++ data1 ++ data2, Nil)
+      case MapInstanceWithData(map: Map[String, _], data: Map[String, _]) => OpcodeRoot(map ++ data, Nil)
       case value =>
         throw new IllegalArgumentException(s"Unexpected root format: $value")
     }
@@ -212,7 +214,6 @@ object Pickle {
   def apply(source: ByteSource, key: Int): OpcodeRoot = apply(source, Some(key))
 
   def apply(source: ByteSource): OpcodeRoot = apply(source, None)
-
 
   private object SizeOf extends Enumeration {
     type SizeOf = Value
@@ -297,7 +298,7 @@ object Pickle {
     OpcodeParser("READONLY_BUFFER", 0x98, NOT_IMPLEMENTED, 5, "make top of stack readonly"),
   ).map(e => e.code -> e).toMap
 
-  private def format(value: Int, digits: Int): String = {
+  private def format(value: Long, digits: Int): String = {
     val hex = value.toHexString
 
     if (digits > hex.length) {

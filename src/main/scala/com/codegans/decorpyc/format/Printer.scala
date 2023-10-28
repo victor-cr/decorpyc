@@ -330,8 +330,16 @@ class Printer(layout: Layout) {
         layout.printExpr(lineNum - 1, indent, key)
         children.foreach(writeATL(_, indent + 1))
       }
+
     case ATLRawChild(_, children, _, expectedLine) =>
       children.foreach(writeATL(_, indent))
+
+    case ATLRawChoice(_, children, _, _) =>
+      children.foreach { item =>
+        layout.printKeyword(item.atl.lineNum - 1, indent, "choice", exclusive = true)
+        if (item.chance != "1.0") layout.printExpr(item.atl.lineNum - 1, indent, item.chance)
+        writeATL(item.atl, indent + 1)
+      }
 
     case ATLRawParallel(_, children, _, expectedLine) =>
       children.foreach { case ATLRawBlock(_, children, _, lineNum, _) =>
@@ -406,14 +414,16 @@ class Printer(layout: Layout) {
 
     layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
     menu.args.foreach(layout.printArgs(expectedLine, indent, _))
-    menu.startStatement.ref match {
-      case Label(_, Nil, _, _, labelName, params) =>
+    menu.startStatement match {
+      case Some(NodeRef(Label(_, Nil, _, _, labelName, params))) =>
         layout.printExpr(expectedLine, indent, labelName)
         params.foreach(layout.printArgs(expectedLine, indent, _))
-      case say: Say =>
+      case Some(NodeRef(say: Say)) =>
         write(say.copy(referenced = false), indent + 1)
-      case `menu` =>
+      case Some(NodeRef(`menu`)) =>
         log.debug("Self reference. Do nothing.")
+      case None =>
+        log.debug("None reference. Do nothing.")
     }
     menu.set.foreach {
       case DebugPyExpr(e, _, lineNum, _) =>

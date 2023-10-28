@@ -1,6 +1,6 @@
 package com.codegans.decorpyc.util
 
-import com.codegans.decorpyc.ast.{Node, Root}
+import com.codegans.decorpyc.ast.Root
 
 import java.io.{File, FileNotFoundException, RandomAccessFile}
 import java.lang.ref.Cleaner
@@ -11,15 +11,15 @@ import java.nio.file.{Path, StandardOpenOption}
 import java.nio.{ByteBuffer, ByteOrder}
 
 trait ByteSource extends AutoCloseable {
-  def offset: Int
+  def offset: Long
 
-  def remaining: Int
+  def remaining: Long
 
-  def length: Int
+  def length: Long
 
-  def seek(offset: Int): Unit
+  def seek(offset: Long): Unit
 
-  def read(len: Int): ByteSource
+  def read(len: Long): ByteSource
 
   def readByte(): Byte
 
@@ -32,7 +32,7 @@ trait ByteSource extends AutoCloseable {
   def readLong(): Long
 
   def readBigInt(len: Int): BigInt = {
-    val bytes = read(len).toArray
+    val bytes = read(len).toArray.reverse
 
     BigInt(bytes)
   }
@@ -44,7 +44,7 @@ trait ByteSource extends AutoCloseable {
   def readLine(charset: Charset): String = {
     val pos = offset
     while (readByte() != 0x0A) {}
-    val len = offset - pos
+    val len = (offset - pos).toInt
 
     seek(pos)
 
@@ -81,33 +81,36 @@ object ByteSource {
 
   def apply(data: ByteBuffer): ByteSource = new BufferedByteSource(data.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN))
 
-  def apply(source: File): ByteSource = {
+  def apply(source: File): ByteSource = apply(source, false)
+
+  def apply(source: Path): ByteSource = apply(source.toFile, false)
+
+  private def apply(source: File, deleteOnExit: Boolean): ByteSource = {
     if (!source.isFile) {
       throw new FileNotFoundException(s"Cannot find file: $source")
     }
 
-    new FileByteSource(source)
+    new FileByteSource(source, deleteOnExit)
   }
-
-  def apply(source: Path): ByteSource = new FileByteSource(source.toFile)
 
 
   private class BufferedByteSource(data: ByteBuffer) extends ByteSource {
-    override def offset: Int = data.position()
+    override def offset: Long = data.position()
 
-    override def remaining: Int = data.remaining()
+    override def remaining: Long = data.remaining()
 
-    override def length: Int = data.limit()
+    override def length: Long = data.limit()
 
 
-    override def seek(offset: Int): Unit = data.position(offset)
+    override def seek(offset: Long): Unit = data.position(offset.toInt)
 
-    override def read(length: Int): ByteSource = {
-      val bytes = new Array[Byte](length)
+    override def read(length: Long): ByteSource = {
+      val len = length.toInt
+      val bytes = new Array[Byte](len)
 
-      data.get(bytes, 0, length)
+      data.get(bytes, 0, len)
 
-      apply(bytes, 0, length)
+      apply(bytes, 0, len)
     }
 
     override def readByte(): Byte = data.get()
@@ -145,35 +148,38 @@ object ByteSource {
     }
 
     override def toArray: Array[Byte] = {
-      val bytes = new Array[Byte](length)
+      val len = length.toInt
+      val bytes = new Array[Byte](len)
 
-      data.get(bytes, 0, length)
+      data.get(bytes, 0, len)
 
       bytes
     }
   }
 
-  private class FileByteSource(file: File) extends ByteSource {
+  private class FileByteSource(file: File, deleteOnExit: Boolean) extends ByteSource {
     private val in: RandomAccessFile = new RandomAccessFile(file, "r")
     private val channel: FileChannel = in.getChannel
 
+    if (deleteOnExit) file.deleteOnExit()
     cleaner.register(this, () => close())
     reset()
 
-    override def offset: Int = in.getFilePointer.toInt
+    override def offset: Long = in.getFilePointer
 
-    override def remaining: Int = length - offset
+    override def remaining: Long = length - offset
 
-    override def length: Int = in.length().toInt
+    override def length: Long = in.length()
 
-    override def seek(offset: Int): Unit = in.seek(offset)
+    override def seek(offset: Long): Unit = in.seek(offset)
 
-    override def read(length: Int): ByteSource = {
-      val bytes = new Array[Byte](length)
+    override def read(length: Long): ByteSource = {
+      val len = length.toInt
+      val bytes = new Array[Byte](len)
 
-      in.readFully(bytes, 0, length)
+      in.readFully(bytes, 0, len)
 
-      apply(ByteBuffer.wrap(bytes, 0, length))
+      apply(ByteBuffer.wrap(bytes, 0, len))
     }
 
     override def readByte(): Byte = in.readByte()
@@ -194,13 +200,16 @@ object ByteSource {
       new String(bytes, 0, length, charset)
     }
 
-    override def readZLib(): ByteSource = apply(ByteBuffer.wrap(ZLib.decompress(in, offset, length - offset)))
+    override def readZLib(): ByteSource = apply(ZLib.decompress(in, offset, length - offset), true)
 
-    override def readZLib(length: Int): ByteSource = apply(ByteBuffer.wrap(ZLib.decompress(in, offset, length)))
+    override def readZLib(length: Int): ByteSource = apply(ZLib.decompress(in, offset, length), true)
 
     override def reset(): Unit = in.seek(0)
 
-    override def close(): Unit = in.close()
+    override def close(): Unit = {
+      in.close()
+      if (deleteOnExit) file.delete()
+    }
 
     override def writeTo(file: File): Unit = {
       val outChannel = FileChannel.open(file.toPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
@@ -213,9 +222,10 @@ object ByteSource {
     }
 
     override def toArray: Array[Byte] = {
-      val bytes = new Array[Byte](length)
+      val len = length.toInt
+      val bytes = new Array[Byte](len)
 
-      in.write(bytes, 0, length)
+      in.write(bytes, 0, len)
 
       bytes
     }

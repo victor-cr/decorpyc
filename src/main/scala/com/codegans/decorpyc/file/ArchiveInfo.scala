@@ -23,7 +23,7 @@ object ArchiveInfo {
     val parts = header.split(' ')
 
     val version = parts(0)
-    val start = java.lang.Long.valueOf(parts(1), 16).toInt
+    val start = java.lang.Long.valueOf(parts(1), 16)
     val key = java.lang.Long.valueOf(parts(2), 16).toInt
 
     val offset = source.offset

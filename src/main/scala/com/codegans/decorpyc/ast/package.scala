@@ -179,37 +179,37 @@ package object ast {
     def apply(context: NodeContext, params: List[_]): IMSpec = params match {
       case Nil =>
         new IMSpec(Nil, None, None, Nil, None, None, Nil)
-        
-      case (name: List[String]) :: (atList: List[_]) :: (layer: Option[_]) :: Nil =>
+
+      case (name: List[String]) :: (atList: List[_]) :: layer :: Nil =>
         new IMSpec(
           name,
           None,
           None,
           atList.flatMap(context.transformPyExpr),
-          layer.flatMap(context.transformPyExpr),
+          context.transformPyExpr(layer),
           None,
           Nil
         )
 
-      case (name: List[String]) :: (expression: Option[_]) :: (tag: Option[_]) :: (atList: List[_]) :: (layer: Option[_]) :: (zOrder: Option[_]) :: Nil =>
+      case (name: List[String]) :: expression :: tag :: (atList: List[_]) :: layer :: zOrder :: Nil =>
         new IMSpec(
           name,
-          expression.flatMap(context.transformPyExpr),
-          tag.flatMap(context.transformPyExpr),
+          context.transformPyExpr(expression),
+          context.transformPyExpr(tag),
           atList.flatMap(context.transformPyExpr),
-          layer.flatMap(context.transformPyExpr),
-          zOrder.flatMap(context.transformPyExpr),
+          context.transformPyExpr(layer),
+          context.transformPyExpr(zOrder),
           Nil
         )
 
-      case (name: List[String]) :: (expression: Option[_]) :: (tag: Option[_]) :: (atList: List[_]) :: (layer: Option[_]) :: (zOrder: Option[_]) :: (behind: List[_]) :: Nil =>
+      case (name: List[String]) :: expression :: tag :: (atList: List[_]) :: layer :: zOrder :: (behind: List[_]) :: Nil =>
         new IMSpec(
           name,
-          expression.flatMap(context.transformPyExpr),
-          tag.flatMap(context.transformPyExpr),
+          context.transformPyExpr(expression),
+          context.transformPyExpr(tag),
           atList.flatMap(context.transformPyExpr),
-          layer.flatMap(context.transformPyExpr),
-          zOrder.flatMap(context.transformPyExpr),
+          context.transformPyExpr(layer),
+          context.transformPyExpr(zOrder),
           behind.flatMap(context.transformPyExpr)
         )
     }

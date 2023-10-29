@@ -2,13 +2,11 @@ package com.codegans.decorpyc.util
 
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.io.{BufferedOutputStream, ByteArrayOutputStream, File, FileOutputStream, OutputStream, RandomAccessFile}
-import java.lang.foreign.SegmentScope
+import java.io._
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel.MapMode
 import java.util.concurrent.atomic.AtomicLong
 import java.util.zip.Inflater
-import scala.collection.mutable.ListBuffer
 
 object ZLib {
   private val log: Logger = LoggerFactory.getLogger(classOf[ZLib.type])

@@ -171,6 +171,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "Scene" => interceptor.replace(Scene(this, attributes, fileName, lineNum))
     case "Screen" => interceptor.replace(Screen(this, attributes, fileName, lineNum))
     case "Show" => interceptor.replace(Show(this, attributes, fileName, lineNum))
+    case "ShowLayer" => interceptor.replace(ShowLayer(this, attributes, fileName, lineNum))
     case "Hide" => interceptor.replace(Hide(this, attributes, fileName, lineNum))
     case "UserStatement" => interceptor.replace(UserStatement(this, attributes, fileName, lineNum))
     case "Menu" => interceptor.replace(Menu(this, attributes, fileName, lineNum))
@@ -209,6 +210,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "SLDefault" => interceptor.replace(SLDefault(this, attributes, fileName, lineNum))
     case "SLPython" => interceptor.replace(SLPython(this, attributes, fileName, lineNum))
     case "SLIf" => interceptor.replace(SLIf(this, attributes, fileName, lineNum))
+    case "SLShowIf" => interceptor.replace(SLIf(this, attributes, fileName, lineNum))
     case "SLFor" => interceptor.replace(SLFor(this, attributes, fileName, lineNum))
     case "SLBlock" => interceptor.replace(SLBlock(this, attributes, fileName, lineNum))
   }

@@ -21,7 +21,10 @@ object SLScreen extends SLNodeFactory[SLScreen] {
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): SLScreen = {
     val name = attributes(keyName).asInstanceOf[String]
-    val layer = attributes(keyLayer).asInstanceOf[String]
+    val layer = attributes(keyLayer) match {
+      case value: String => value
+      case value => context.transformPyExpr(value).map(e => e.expression).getOrElse("")
+    }
     val zOrder = context.transformPyExpr(attributes.get(keyZOrder))
     val params = context.transformParameterInfo(attributes.get(keyParameters))
     val children = attributes(keyChildren).asInstanceOf[List[_]].flatMap(context.transformSL)

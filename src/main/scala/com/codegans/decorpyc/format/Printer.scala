@@ -281,19 +281,19 @@ class Printer(layout: Layout) {
     case Show(_, atl, _, expectedLine, IMSpec(names, _, _, atList, _, _, _)) =>
       layout.printKeyword(expectedLine, indent, "show")
       names.foreach(layout.printExpr(expectedLine, indent, _))
-      if (atList.nonEmpty) {
-        layout.printKeyword(expectedLine, indent, "at")
-        atList.foreach(e => layout.printExpr(expectedLine, indent, e.expression))
-      }
+      writePyExpr(atList, Some("at"), expectedLine, indent + 1)
+      atl.foreach(writeATL(_, indent, initial = true))
+
+    case ShowLayer(_, atl, _, expectedLine, layer, atList) =>
+      layout.printKeyword(expectedLine, indent, "show layer")
+      layout.printExpr(expectedLine, indent, layer)
+      writePyExpr(atList, Some("at"), expectedLine, indent + 1)
       atl.foreach(writeATL(_, indent, initial = true))
 
     case Hide(_, _, expectedLine, IMSpec(names, _, _, atList, _, _, _)) =>
       layout.printKeyword(expectedLine, indent, "hide")
       names.foreach(layout.printExpr(expectedLine, indent, _))
-      if (atList.nonEmpty) {
-        layout.printKeyword(expectedLine, indent, "at")
-        atList.foreach(e => layout.printExpr(expectedLine, indent, e.expression))
-      }
+      writePyExpr(atList, Some("at"), expectedLine, indent + 1)
 
     case Translate(_, children, _, expectedLine, id, _, maybeLang) =>
       layout.printKeyword(expectedLine, indent, "translate", exclusive = true)
@@ -426,15 +426,31 @@ class Printer(layout: Layout) {
       case None =>
         log.debug("None reference. Do nothing.")
     }
-    menu.set.foreach {
-      case DebugPyExpr(e, _, lineNum, _) =>
-        layout.printKeyword(lineNum, indent + 1, "set").printExpr(lineNum, indent + 1, e)
-        line = lineNum
-      case PyExpr(e) =>
-        layout.printKeyword(expectedLine, indent + 1, "set").printExpr(expectedLine, indent + 1, e)
-    }
+    line = writePyExpr(menu.set, Some("set"), line, indent + 1)
     menu.caption.foreach(e => layout.printText(line + 1, indent + 1, e))
     menu.children.foreach((node: Node) => write(node, indent + 1))
+  }
+
+  private def writePyExpr(expr: Option[PyExpr], prefix: Option[String], expectedLine: Int, indent: Int): Int = expr match {
+    case None =>
+      expectedLine
+    case Some(DebugPyExpr(expression, _, lineNum, _)) =>
+      prefix.foreach(layout.printExpr(lineNum, indent, _))
+      layout.printExpr(lineNum, indent, expression)
+      lineNum
+    case Some(StringPyExpr(expression)) =>
+      prefix.foreach(layout.printExpr(expectedLine, indent, _))
+      layout.printExpr(expectedLine, indent, expression)
+      expectedLine
+  }
+
+  private def writePyExpr(exprList: List[PyExpr], prefix: Option[String], expectedLine: Int, indent: Int): Int = {
+    if (exprList.nonEmpty) {
+      val startLine = writePyExpr(Some(exprList.head), prefix, expectedLine, indent)
+      exprList.tail.foldLeft(startLine) { case (line, expression) => writePyExpr(Some(expression), Some(","), line, indent) }
+    } else {
+      expectedLine
+    }
   }
 }
 

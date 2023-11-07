@@ -201,19 +201,26 @@ object Pickle {
   def apply(source: ByteSource, maybeKey: Option[Int]): OpcodeRoot = {
     val stack = new Pickle(maybeKey, source).read().stack
 
-    stack.pop() match {
-      case (attributes: Map[String, _]) :: (list: List[_]) :: Nil => OpcodeRoot(attributes, list)
-      case index: Map[String, _] => OpcodeRoot(index, Nil)
-      case MapInstanceWithData(MapInstanceWithData(map: Map[String, _], data1: Map[String, _]), data2: Map[String, _]) => OpcodeRoot(map ++ data1 ++ data2, Nil)
-      case MapInstanceWithData(map: Map[String, _], data: Map[String, _]) => OpcodeRoot(map ++ data, Nil)
-      case value =>
-        throw new IllegalArgumentException(s"Unexpected root format: $value")
-    }
+    transform(stack.pop())
   }
 
   def apply(source: ByteSource, key: Int): OpcodeRoot = apply(source, Some(key))
 
   def apply(source: ByteSource): OpcodeRoot = apply(source, None)
+
+  private def transform(value: Any): OpcodeRoot = value match {
+    case (attributes: Map[String, _]) :: (list: List[_]) :: Nil =>
+      OpcodeRoot(attributes, list)
+    case index: Map[String, _] =>
+      OpcodeRoot(index, Nil)
+    case MapInstanceWithData(map: Map[String, _], data: Map[String, _]) =>
+      OpcodeRoot(map ++ data, Nil)
+    case MapInstanceWithData(map: MapInstanceWithData, data: Map[String, _]) =>
+      val root = transform(map)
+      root.copy(attributes = data ++ root.attributes)
+    case value =>
+      throw new IllegalArgumentException(s"Unexpected root format: $value")
+  }
 
   private object SizeOf extends Enumeration {
     type SizeOf = Value

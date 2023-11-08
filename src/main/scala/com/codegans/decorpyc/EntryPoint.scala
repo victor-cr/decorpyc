@@ -23,43 +23,38 @@ object EntryPoint {
       |""".stripMargin
 
   final def main(args: Array[String]): Unit = {
+    val fs = FileSystems.getDefault
     val config = new Conf(args)
 
-    val output = config.output()
+    val root = config.rootDir().getAbsoluteFile.getCanonicalFile.toPath
+    val input = root.resolve(config.gameDir().toPath).toFile.getAbsoluteFile.getCanonicalFile
+    val output = root.resolve(config.outputDir().toPath).toFile.getAbsoluteFile.getCanonicalFile
+    val globPattern = if (config.scriptOnly()) "**/*.{rpy,rpyc,py}" else config.filter.map(_.mkString(",")).getOrElse("*.*")
+    val globFilter = fs.getPathMatcher("glob:" + globPattern)
 
-    val inputFiles: ListBuffer[File] = ListBuffer()
+    log.info("Searching for unpacked resources at {}", input)
 
-    config.input().foreach { input =>
-      if (input.isFile) {
-        log.info("Prepare to decompile the file: {}", input.getAbsolutePath)
-        inputFiles.addOne(input)
-      } else if (input.isDirectory) {
-        log.info("Prepare to recursively search the directory: {}", input.getAbsolutePath)
-        val fs = FileSystems.getDefault
+    val visitor = new FileFinder(fs.getPathMatcher("glob:**/*.{rpyc,rpy,rpa,py}"))
 
-        val visitor = new FileFinder(fs.getPathMatcher("glob:*.{rpyc,rpa}"))
+    Files.walkFileTree(input.toPath, visitor)
 
-        Files.walkFileTree(input.toPath, visitor)
-
-        inputFiles.addAll(visitor.files)
-      } else {
-        log.warn("Cannot locate neither directory nor file: {}", input.getAbsolutePath)
-        return
-      }
-    }
+    val inputFiles: ListBuffer[File] = visitor.files
 
     if (inputFiles.isEmpty) {
-      log.warn("Cannot locate neither RenPy compiled files nor archives: {}", config.input())
+      log.warn("Cannot locate neither RenPy compiled files nor archives: {}", input)
       return
+    } else {
+      log.info("Found {} files. Start processing.", inputFiles.size)
     }
 
     val archives = inputFiles.filter(_.getName.endsWith(".rpa"))
     val binaries = inputFiles.filter(_.getName.endsWith(".rpyc"))
+    val sources = inputFiles.filter(e => e.getName.endsWith(".rpy") || e.getName.endsWith(".py"))
 
     if (output.isDirectory) {
-      log.debug("Output directory has already been created: {}", output.getAbsolutePath)
+      log.info("Output directory has already been created: {}", output.getAbsolutePath)
     } else if (!output.exists()) {
-      log.debug("Missing the output directory: {}", output.getAbsolutePath)
+      log.info("Creating the output directory: {}", output.getAbsolutePath)
       output.mkdirs()
     }
 
@@ -71,37 +66,45 @@ object EntryPoint {
     archives.foreach { file =>
       val source = ByteSource(file)
 
-      val archiveInfo = ArchiveInfo(source)
+      val archiveInfo = ArchiveInfo(file.getName, source)
 
-      archiveInfo.files.foreach { fileInfo =>
-        val result = new File(output, fileInfo.name)
+      archiveInfo.index.entries.foreach { entry =>
+        val resource = new File(output, entry.name).getAbsoluteFile.getCanonicalFile
 
-        result.getParentFile.mkdirs()
+        if (globFilter.matches(resource.toPath)) {
+          source.seek(entry.offset)
 
-        fileInfo.decompiled.writeTo(result)
+          resource.getParentFile.mkdirs()
 
-        if (fileInfo.name.endsWith(".rpyc")) {
-          log.info("Successfully wrote decompiled results to: {}", result.getAbsolutePath)
-        } else {
-          log.info("Successfully wrote extracted resource to: {}", result.getAbsolutePath)
+          FileInfo(entry.name, source.read(entry.length)).decompiled.writeTo(resource)
+
+          if (resource.getName.endsWith(".rpyc")) {
+            log.info("Successfully wrote decompiled results to: {}", resource.getAbsolutePath)
+          } else {
+            log.info("Successfully wrote extracted resource to: {}", resource.getAbsolutePath)
+          }
         }
       }
     }
 
     binaries.foreach { file =>
-      val source = ByteSource(file)
+      val resource = output.toPath.resolve(input.toPath.relativize(file.toPath)).toFile
 
-      val fileInfo = FileInfo(file.getName, source)
+      if (globFilter.matches(resource.toPath)) {
+        val source = ByteSource(file)
 
-      val newName = if (fileInfo.name.endsWith(".rpyc")) fileInfo.name.stripSuffix("c") else fileInfo.name
+        val fileInfo = FileInfo(file.getName, source)
 
-      val result = new File(output, newName)
+        resource.getParentFile.mkdirs()
 
-      result.getParentFile.mkdirs()
+        fileInfo.decompiled.writeTo(resource)
 
-      fileInfo.decompiled.writeTo(result)
+        log.info("Successfully wrote decompiled results to: {}", resource.getAbsolutePath)
+      }
+    }
 
-      log.info("Successfully wrote decompiled results to: {}", result.getAbsolutePath)
+    sources.foreach { file =>
+      log.info("Do nothing: {}", file)
     }
   }
 
@@ -114,7 +117,10 @@ object EntryPoint {
     }
 
     override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
-      if (matcher.matches(file)) files.addOne(file.toFile)
+      if (matcher.matches(file)) {
+        log.info("Found file: {}", file)
+        files.addOne(file.toFile)
+      }
       super.visitFile(file, attrs)
     }
 
@@ -130,10 +136,33 @@ object EntryPoint {
   }
 
   class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
-    val help: ScallopOption[Boolean] = opt[Boolean](name = "help", short = '?', argName = "", descr = "Prints this help message and exits")
-    val version: ScallopOption[Boolean] = opt[Boolean](name = "version", short = 'v', argName = "", descr = "Prints application version and exits")
-    val output: ScallopOption[File] = opt[File](name = "output", short = 'o', descr = "Output directory for unpacked/decompiled files", argName = "dir", required = true)
-    val input: ScallopOption[List[File]] = trailArg[List[File]](descr = "Directories or files which has to be unpacked/decompiled", required = true)
+    val help: ScallopOption[Boolean] = opt[Boolean](
+      name = "help", short = '?', argName = "",
+      descr = "Prints this help message and exits"
+    )
+    val version: ScallopOption[Boolean] = opt[Boolean](
+      name = "version", short = 'v', argName = "",
+      descr = "Prints application version and exits"
+    )
+    val scriptOnly: ScallopOption[Boolean] = opt[Boolean](
+      name = "script-only", short = 's', argName = "",
+      descr = "Unpack decompile only Ren'Py scripts. Shortcut for `-f '**/*.rpy,**/*.rpyc,**/*.py'`"
+    )
+    val filter: ScallopOption[List[String]] = opt[List[String]](
+      name = "filter", short = 'f', argName = "pattern",
+      descr = "Comma-separated patterns to filter unpacked/decompiled files. See details about the pattern format at `https://ant.apache.org/manual/dirtasks.html`"
+    )
+    val gameDir: ScallopOption[File] = opt[File](
+      name = "game", short = 'g', argName = "dir", default = Some(new File(".", "game")),
+      descr = "Game directory where game files are located: compiled sources, RPA, etc. Default is `game`."
+    )
+    val outputDir: ScallopOption[File] = opt[File](
+      name = "output", short = 'o', argName = "dir", default = Some(new File(".", "output")),
+      descr = "Output directory for unpacked/decompiled files. Default is `output`."
+    )
+    val rootDir: ScallopOption[File] = trailArg[File](
+      descr = "Path to the directory of the Ren'Py game where executable/startup files are located."
+    )
 
     version(EntryPoint.artifact + "-" + EntryPoint.version)
     banner(EntryPoint.banner)

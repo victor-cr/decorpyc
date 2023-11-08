@@ -10,14 +10,13 @@ case class ArchiveInfo(
                         version: String,
                         offset: Long,
                         key: Long,
-                        index: ArchiveIndex,
-                        files: List[FileInfo]
+                        index: ArchiveIndex
                       )
 
 object ArchiveInfo {
   private val log: Logger = LoggerFactory.getLogger(classOf[ArchiveInfo])
 
-  def apply(source: ByteSource): ArchiveInfo = {
+  def apply(name: String, source: ByteSource): ArchiveInfo = {
     val header = source.readLine(StandardCharsets.US_ASCII)
 
     val parts = header.split(' ')
@@ -28,18 +27,18 @@ object ArchiveInfo {
 
     val offset = source.offset
 
-    log.info("Read archive `{}` with obfuscation key `{}`: index at `{}`", version, key, start)
+    log.info("Read {} archive `{}` with obfuscation key `{}`: index at `{}`", version, name, key, start)
 
     source.seek(start)
     val index = ArchiveIndex(source.readZLib(), key)
     source.seek(offset)
 
-    val files = index.entries.map { case ArchiveEntry(name, off, len) =>
-      source.seek(off)
+    //    val files = index.entries.map { case ArchiveEntry(name, off, len) =>
+    //      source.seek(off)
+    //
+    //      FileInfo(name, source.read(len))
+    //    }
 
-      FileInfo(name, source.read(len))
-    }
-
-    ArchiveInfo("<unknown yet>", version, start, key, index, files)
+    ArchiveInfo(name, version, start, key, index)
   }
 }

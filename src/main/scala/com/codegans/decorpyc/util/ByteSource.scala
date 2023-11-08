@@ -7,7 +7,7 @@ import java.lang.ref.Cleaner
 import java.nio.channels.FileChannel
 import java.nio.channels.FileChannel.MapMode
 import java.nio.charset.Charset
-import java.nio.file.{Path, StandardOpenOption}
+import java.nio.file.{Files, Path, StandardOpenOption}
 import java.nio.{ByteBuffer, ByteOrder}
 
 trait ByteSource extends AutoCloseable {
@@ -67,13 +67,16 @@ trait ByteSource extends AutoCloseable {
 
   override def close(): Unit
 
-  def writeTo(file: File): Unit
+  def writeTo(file: File): Unit = writeTo(file, length)
+
+  def writeTo(file: File, length: Long): Unit
 
   def toArray: Array[Byte]
 }
 
 object ByteSource {
   private val cleaner: Cleaner = Cleaner.create()
+  private val sizeThreshold = 1 << 25
 
   def apply(data: Array[Byte]): ByteSource = apply(data, 0, data.length)
 
@@ -81,9 +84,9 @@ object ByteSource {
 
   def apply(data: ByteBuffer): ByteSource = new BufferedByteSource(data.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN))
 
-  def apply(source: File): ByteSource = apply(source, false)
+  def apply(source: File): ByteSource = apply(source, deleteOnExit = false)
 
-  def apply(source: Path): ByteSource = apply(source.toFile, false)
+  def apply(source: Path): ByteSource = apply(source.toFile, deleteOnExit = false)
 
   private def apply(source: File, deleteOnExit: Boolean): ByteSource = {
     if (!source.isFile) {
@@ -100,7 +103,6 @@ object ByteSource {
     override def remaining: Long = data.remaining()
 
     override def length: Long = data.limit()
-
 
     override def seek(offset: Long): Unit = data.position(offset.toInt)
 
@@ -137,14 +139,12 @@ object ByteSource {
 
     override def close(): Unit = {}
 
-    override def writeTo(file: File): Unit = {
-      val channel = FileChannel.open(file.toPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+    override def writeTo(file: File, length: Long): Unit = {
+      val len = length.toInt
+      val bytes = new Array[Byte](len)
 
-      try {
-        channel.write(data)
-      } finally {
-        channel.close()
-      }
+      data.get(bytes, 0, len)
+      Files.write(file.toPath, bytes, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
     }
 
     override def toArray: Array[Byte] = {
@@ -174,12 +174,18 @@ object ByteSource {
     override def seek(offset: Long): Unit = in.seek(offset)
 
     override def read(length: Long): ByteSource = {
-      val len = length.toInt
-      val bytes = new Array[Byte](len)
+      if (length > sizeThreshold) {
+        val file = File.createTempFile("decorpyc", ".buf.tmp")
+        writeTo(file, length)
+        apply(file, deleteOnExit = true)
+      } else {
+        val len = length.toInt
+        val bytes = new Array[Byte](len)
 
-      in.readFully(bytes, 0, len)
+        in.readFully(bytes, 0, len)
 
-      apply(ByteBuffer.wrap(bytes, 0, len))
+        apply(ByteBuffer.wrap(bytes, 0, len))
+      }
     }
 
     override def readByte(): Byte = in.readByte()
@@ -200,9 +206,9 @@ object ByteSource {
       new String(bytes, 0, length, charset)
     }
 
-    override def readZLib(): ByteSource = apply(ZLib.decompress(in, offset, length - offset), true)
+    override def readZLib(): ByteSource = apply(ZLib.decompress(in, offset, length - offset), deleteOnExit = true)
 
-    override def readZLib(length: Int): ByteSource = apply(ZLib.decompress(in, offset, length), true)
+    override def readZLib(length: Int): ByteSource = apply(ZLib.decompress(in, offset, length), deleteOnExit = true)
 
     override def reset(): Unit = in.seek(0)
 
@@ -211,11 +217,11 @@ object ByteSource {
       if (deleteOnExit) file.delete()
     }
 
-    override def writeTo(file: File): Unit = {
+    override def writeTo(file: File, length: Long): Unit = {
       val outChannel = FileChannel.open(file.toPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
 
       try {
-        outChannel.write(channel.map(MapMode.READ_ONLY, offset, length))
+        channel.transferTo(offset, length, outChannel)
       } finally {
         outChannel.close()
       }

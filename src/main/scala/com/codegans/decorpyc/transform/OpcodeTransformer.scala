@@ -177,6 +177,8 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "Menu" => interceptor.replace(Menu(this, attributes, fileName, lineNum))
     case "Say" => interceptor.replace(Say(this, attributes, fileName, lineNum))
     case "Translate" => interceptor.replace(Translate(this, attributes, fileName, lineNum))
+    case "TranslateBlock" => interceptor.replace(TranslateBlock(this, attributes, fileName, lineNum))
+    case "TranslateEarlyBlock" => interceptor.replace(TranslateBlock(this, attributes, fileName, lineNum))
     case "TranslateString" => interceptor.replace(TranslateString(this, attributes, fileName, lineNum))
     case "EndTranslate" => interceptor.replace(EndTranslate(this, attributes, fileName, lineNum))
     case "Call" => interceptor.replace(Call(this, attributes, fileName, lineNum))

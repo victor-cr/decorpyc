@@ -71,7 +71,7 @@ class Pickle(key: Option[Int], _source: ByteSource) {
 
   private def readFrame(): Unit = {
     val len = source.readLong()
-    val frame = source.read(len.toInt) // TODO: Unsafe
+    val frame = source.read(len) // TODO: Unsafe
     frames.addOne(frame)
   }
 
@@ -327,11 +327,11 @@ object Pickle {
         }
 
         operation(pickle)
-        log.debug("Executed opcode 0x{} [{}] parser: {}", format(code, 2), name, description)
+        log.debug("Executed opcode 0x{} [{}] parser: {}", format(code & 0xFF, 2), name, description)
         Success()
       } catch {
         case NonFatal(e) =>
-          log.error("Failed during execution of opcode 0x{} [{}] processor: {}", format(code, 2), name, description, e)
+          log.error("Failed during execution of opcode 0x{} [{}] processor: {}", format(code & 0xFF, 2), name, description, e)
           Failure(e)
       }
     }

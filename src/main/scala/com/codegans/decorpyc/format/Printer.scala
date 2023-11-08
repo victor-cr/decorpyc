@@ -305,6 +305,10 @@ class Printer(layout: Layout) {
       //TODO implement
       log.debug("Ignore: {}", tmp)
 
+    case tmp@TranslateBlock(_, children, _, expectedLine, lang) =>
+      //TODO implement
+      log.debug("Ignore: {}", tmp)
+
     case Transform(_, atl, _, expectedLine, variable, params) =>
       layout.printKeyword(expectedLine, indent, "transform", exclusive = true)
       layout.printExpr(expectedLine, indent, variable)

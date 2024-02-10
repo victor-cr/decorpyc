@@ -46,8 +46,6 @@ object ArchiveInfo {
   }
 
   private def createInfo(name: String, source: ByteSource, version: String, offset: Long, key: Option[Int]): ArchiveInfo = {
-    val offset = source.offset
-
     val index = parseIndex(source, offset, key)
 
     log.info("Read {} archive `{}` with obfuscation key `{}`: index at {} ({} entries)", version, name, key.map(_.toHexString).getOrElse("None"), offset, index.entries.size)

@@ -8,12 +8,14 @@ case class SLScreen(override val attributes: Map[String, _],
                     override val lineNum: Int,
                     name: String,
                     layer: String,
+                    tag: Option[String],
                     zOrder: Option[PyExpr],
                     params: Option[ParameterInfo]
                    ) extends SLNode with Attributes with ChildrenList[SLNode]
 
 object SLScreen extends SLNodeFactory[SLScreen] {
   private val keyName: String = "name"
+  private val keyTag: String = "tag"
   private val keyLayer: String = "layer"
   private val keyZOrder: String = "zorder"
   private val keyParameters: String = "parameters"
@@ -25,10 +27,11 @@ object SLScreen extends SLNodeFactory[SLScreen] {
       case value: String => value
       case value => context.transformPyExpr(value).map(e => e.expression).getOrElse("")
     }
+    val tag = context.transformString(attributes.get(keyTag))
     val zOrder = context.transformPyExpr(attributes.get(keyZOrder))
     val params = context.transformParameterInfo(attributes.get(keyParameters))
     val children = attributes(keyChildren).asInstanceOf[List[_]].flatMap(context.transformSL)
 
-    new SLScreen(attributes - keyName - keyLayer - keyZOrder - keyParameters - keyChildren, children, fileName, lineNum, name, layer, zOrder, params)
+    new SLScreen(attributes - keyName - keyLayer - keyTag - keyZOrder - keyParameters - keyChildren, children, fileName, lineNum, name, layer, tag, zOrder, params)
   }
 }

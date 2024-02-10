@@ -106,6 +106,8 @@ package object ast {
     def transformStringMap: PartialFunction[Any, Map[String, _]] = {
       case value: Map[String, _] => value
       case None => Map.empty
+      case list: List[List[_]] => list.map { case (key: String) :: value :: Nil => key -> value }.toMap
+      case (key: String) :: value :: Nil => Map(key -> value)
       case Some(value) => transformStringMap(value)
     }
   }
@@ -159,6 +161,8 @@ package object ast {
   case class DebugPyExpr(override val expression: String, override val fileName: String, override val lineNum: Int, py: Int) extends PyExpr with DebugInfo
 
   case class ParameterInfo(attributes: Map[String, _], params: Map[String, Option[PyExpr]]) extends Node
+
+  case class Parameter(name: String, kind: Int, value: Option[PyExpr])
 
   case class ArgumentInfo(attributes: Map[String, _],
                           arguments: List[(Option[String], Option[PyExpr])],

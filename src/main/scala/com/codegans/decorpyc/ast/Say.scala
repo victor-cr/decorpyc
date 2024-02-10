@@ -7,7 +7,7 @@ case class Say(
                 what: String,
                 interact: Boolean,
                 whoFast: Boolean,
-                who: Option[String],
+                who: Option[PyExpr],
                 withA: Option[PyExpr],
                 args: Option[ArgumentInfo],
                 attrs: List[String],
@@ -29,7 +29,7 @@ object Say extends ASTNodeFactory[Say] {
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): Say = {
     val withA = context.transformPyExpr(attributes(keyWithA))
-    val who = context.transformString(attributes.get(keyWho))
+    val who = context.transformPyExpr(attributes.get(keyWho))
     val attrs = context.transformStringList(attributes.get(keyAttributes))
     val tempAttrs = context.transformStringList(attributes.get(keyTemporaryAttributes))
     val args = context.transformArgumentInfo(attributes.get(keyArguments))

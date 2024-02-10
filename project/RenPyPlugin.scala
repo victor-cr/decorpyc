@@ -5,7 +5,7 @@ import sbt.internal.util.ManagedLogger
 import scala.sys.process.*
 
 object RenPyPlugin extends AutoPlugin {
-  private val versions: Seq[String] = Seq("8.1.1", "8.0.3", "7.6.1", "7.5.3", "7.4.11", "7.3.5")
+  private val versions: Seq[String] = Seq("8.2.0", "8.1.1", "8.0.3", "7.7.0", "7.6.1", "7.5.3", "7.4.11", "7.3.5")
   private val resourceDir = Test / resourceDirectory
   private val targetDir = target
 

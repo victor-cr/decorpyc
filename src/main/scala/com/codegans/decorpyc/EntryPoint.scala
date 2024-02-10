@@ -2,12 +2,12 @@ package com.codegans.decorpyc
 
 import com.codegans.decorpyc.file.{ArchiveInfo, FileInfo}
 import com.codegans.decorpyc.util.ByteSource
-import org.rogach.scallop.{Compat, Scallop, ScallopConf, ScallopOption}
+import org.rogach.scallop.{Compat, ScallopConf, ScallopOption}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.{File, IOException}
-import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file._
+import java.nio.file.attribute.BasicFileAttributes
 import scala.collection.mutable.ListBuffer
 
 object EntryPoint {
@@ -34,7 +34,7 @@ object EntryPoint {
 
     log.info("Searching for unpacked resources at {}", input)
 
-    val visitor = new FileFinder(fs.getPathMatcher("glob:**/*.{rpyc,rpy,rpa,py}"))
+    val visitor = new FileFinder(fs.getPathMatcher("glob:**/*.{rpyc,rpy,rpa,rpi,py}"))
 
     Files.walkFileTree(input.toPath, visitor)
 
@@ -47,7 +47,7 @@ object EntryPoint {
       log.info("Found {} files. Start processing.", inputFiles.size)
     }
 
-    val archives = inputFiles.filter(_.getName.endsWith(".rpa"))
+    val archives = inputFiles.filter(e => e.getName.endsWith(".rpa") || e.getName.endsWith(".rpi"))
     val binaries = inputFiles.filter(_.getName.endsWith(".rpyc"))
     val sources = inputFiles.filter(e => e.getName.endsWith(".rpy") || e.getName.endsWith(".py"))
 

@@ -42,8 +42,11 @@ class Printer(layout: Layout) {
         currentPriority = p
       }
       children.foreach(write(_, indent + 1))
-    case Init(_, children@(_: Python) :: _, _, initLine, _) =>
+    case Init(_, children@(_: Python) :: _, _, initLine, 0) =>
       layout.printKeyword(initLine, indent, "init", exclusive = true)
+      children.foreach(write(_, indent))
+    case Init(_, children@(_: Python) :: _, _, initLine, priority) =>
+      layout.printKeyword(initLine, indent, "init", exclusive = true).printExpr(initLine, indent, priority)
       children.foreach(write(_, indent))
     case Init(_, children, _, _, _) =>
       children.foreach(write(_, indent))
@@ -207,20 +210,21 @@ class Printer(layout: Layout) {
         atList.foreach(e => layout.printExpr(expectedLine, indent, e.expression))
       }
 
-    case Screen(_, _, expectedLine, SLScreen(_, children, _, _, name, _, _, params) :: Nil) =>
+    case Screen(_, _, expectedLine, SLScreen(_, children, _, _, name, _, tag, _, params) :: Nil) =>
       layout.printKeyword(expectedLine, indent, "screen", exclusive = true)
       layout.printExpr(expectedLine, indent, name)
       params.foreach(layout.printArgs(expectedLine, indent, _))
+      tag.foreach(layout.printKeyword(expectedLine + 1, indent + 1, "tag").printExpr(expectedLine + 1, indent + 1, _))
       children.foreach((node: Node) => write(node, indent + 1))
 
-    case SLDisplayable(_, children, _, expectedLine, name, positional, keyword) =>
-      name.foreach(layout.printExpr(expectedLine, indent, _))
+    case SLDisplayable(_, children, _, expectedLine, command, name, positional, keyword) =>
+      name.orElse(command).foreach(layout.printExpr(expectedLine, indent, _))
       var line = expectedLine + 1
       positional.foreach {
         case Some(DebugPyExpr(expression, _, lineNum, _)) =>
-          layout.printExpr(lineNum, indent + 1, expression)
+          layout.printExpr(lineNum, indent, expression)
         case Some(PyExpr(expression)) =>
-          layout.printExpr(line, indent + 1, expression)
+          layout.printExpr(line, indent, expression)
           line += 1
       }
       keyword.foreach {
@@ -242,7 +246,7 @@ class Printer(layout: Layout) {
           layout.printExpr(expectedLine, indent, expression.map(_.expression).getOrElse("True"))
           write(node, indent + 1)
         case ((None, node :: Nil), _) =>
-          layout.printKeyword(node.lineNum - 1, indent, "else")
+          layout.printKeyword(node.lineNum, indent, "else")
           write(node, indent + 1)
         case ((Some(DebugPyExpr(expression, _, lineNum, _)), node :: Nil), _) =>
           layout.printKeyword(lineNum, indent, "elif")
@@ -275,7 +279,10 @@ class Printer(layout: Layout) {
     case SLPython(_, _, expectedLine, code) => writePython(code, None, expectedLine, indent)
 
     case SLBlock(_, children, _, expectedLine, keyword) =>
-      keyword.foreach { case (key, Some(PyExpr(expression))) => layout.printExpr(expectedLine, indent, key).printExpr(expectedLine, indent, expression) }
+      keyword.foreach {
+        case (key, Some(DebugPyExpr(expression, _, lineNum, _))) => layout.printExpr(lineNum, indent, key).printExpr(lineNum, indent, expression)
+        case (key, Some(PyExpr(expression))) => layout.printExpr(expectedLine, indent, key).printExpr(expectedLine, indent, expression)
+      }
       children.foreach((node: Node) => write(node, indent))
 
     case Show(_, atl, _, expectedLine, IMSpec(names, _, _, atList, _, _, _)) =>

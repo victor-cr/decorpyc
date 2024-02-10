@@ -98,6 +98,8 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case Some(value) => transformArgumentInfo(value)
     case SetUpdate(NewInstance(id, GlobalFunction("renpy.ast", "ArgumentInfo"), Nil), attributes: Map[String, _]) =>
       Some(storeInstance(id, transformArgumentInfo(attributes)))
+    case SetUpdate(NewInstance(id, GlobalFunction("renpy.parameter", "ArgumentInfo"), Nil), attributes: Map[String, _]) =>
+      Some(storeInstance(id, transformArgumentInfo(attributes)))
     case value => throw new IllegalArgumentException(s"Not valid ArgumentInfo object: $value")
   }
 
@@ -106,11 +108,18 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case Some(value) => transformParameterInfo(value)
     case SetUpdate(NewInstance(id, GlobalFunction("renpy.ast", "ParameterInfo"), Nil), attributes: Map[String, _]) =>
       Some(storeInstance(id, transformParameterInfo(attributes)))
+    case SetUpdate(NewInstance(id, GlobalFunction("renpy.parameter", "ParameterInfo"), Nil), attributes: Map[String, _]) =>
+      Some(storeInstance(id, transformParameterInfo(attributes)))
+    case SetState(NewInstance(id, GlobalFunction("renpy.parameter", "Signature"), Nil), attributes) =>
+      Some(storeInstance(id, transformSignature(transformStringMap(attributes(1)))))
     case value => throw new IllegalArgumentException(s"Not valid ParameterInfo object: $value")
   }
 
   override def transformStringMap: PartialFunction[Any, Map[String, _]] = super.transformStringMap.orElse {
     case SetMapItem(_, key: String, value) => Map(key -> value)
+    case MapInstanceWithData(_, data: Map[String, _]) => data
+    case Invocation(GlobalFunction("collections", "OrderedDict"), Nil) => Map()
+    case Invocation(GlobalFunction("collections", "OrderedDict"), (list: List[_]) :: Nil) => transformStringMap(list)
     case value => throw new IllegalArgumentException(s"Not valid map object: $value")
   }
 
@@ -160,6 +169,17 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     val keywordOnly = attributes.getOrElse("keyword_only", Nil).asInstanceOf[List[_]]
 
     ParameterInfo(attributes - "parameters", params)
+  }
+
+  private def transformSignature(attributes: Map[String, _]): ParameterInfo = {
+    val params = transformStringMap(attributes("parameters")).map {
+      case (key, SetUpdate(NewInstance(_, GlobalFunction("renpy.parameter", "Parameter"), Nil), param: Map[String, _])) =>
+        key -> Parameter(param("name").asInstanceOf[String], param("kind").asInstanceOf[Int], transformPyExpr(param("default")))
+    }
+
+    val map = params.map { case (key, Parameter(_, _, value)) => key -> value }
+
+    ParameterInfo(attributes - "parameters", map)
   }
 
   private def transformAST(renpyType: String, attributes: Map[String, _], fileName: String, lineNum: Int): ASTNode = (renpyType: @switch) match {

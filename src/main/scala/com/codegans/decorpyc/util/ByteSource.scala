@@ -1,6 +1,7 @@
 package com.codegans.decorpyc.util
 
 import com.codegans.decorpyc.ast.Root
+import com.codegans.decorpyc.util.ByteSource.wordMask
 
 import java.io.{File, FileNotFoundException, RandomAccessFile}
 import java.lang.ref.Cleaner
@@ -23,9 +24,11 @@ trait ByteSource extends AutoCloseable {
 
   def readByte(): Byte
 
-  def readUnsignedByte(): Int = readByte() & 0xff
+  def readUnsignedByte(): Int = java.lang.Byte.toUnsignedInt(readByte())
 
-  def readWord(): Int
+  def readWord(): Short
+
+  def readUnsignedWord(): Int = java.lang.Short.toUnsignedInt(readWord())
 
   def readInt(): Int
 
@@ -77,6 +80,7 @@ trait ByteSource extends AutoCloseable {
 object ByteSource {
   private val cleaner: Cleaner = Cleaner.create()
   private val sizeThreshold = 1 << 25
+  private val wordMask = 1 << 15
 
   def apply(data: Array[Byte]): ByteSource = apply(data, 0, data.length)
 
@@ -117,7 +121,7 @@ object ByteSource {
 
     override def readByte(): Byte = data.get()
 
-    override def readWord(): Int = data.getChar
+    override def readWord(): Short = data.getShort
 
     override def readInt(): Int = data.getInt
 
@@ -190,13 +194,17 @@ object ByteSource {
 
     override def readByte(): Byte = in.readByte()
 
-    override def readWord(): Int = in.readChar()
+    override def readWord(): Short = java.lang.Short.reverseBytes(in.readShort())
 
-    override def readInt(): Int =
-      0 | (in.readByte() & 0xFF) | ((in.readByte() & 0xFF) << 8) | ((in.readByte() & 0xFF) << 16) | ((in.readByte() & 0xFF) << 24)
+    override def readUnsignedWord(): Int = java.lang.Short.toUnsignedInt(readWord())
+//      0 | (in.readByte() & 0xFF) | ((in.readByte() & 0xFF) << 8)
 
-    override def readLong(): Long =
-      0L | (in.readInt() & 0xFFFFFFFF) | ((in.readInt() & 0xFFFFFFFF) << 32)
+    override def readInt(): Int = java.lang.Integer.reverseBytes(in.readInt())
+//      0 | (in.readByte() & 0xFF) | ((in.readByte() & 0xFF) << 8) | ((in.readByte() & 0xFF) << 16) | ((in.readByte() & 0xFF) << 24)
+
+    override def readLong(): Long = java.lang.Long.reverseBytes(in.readLong())
+//      0L | (in.readInt() & 0xFFFFFFFF) | ((in.readInt() & 0xFFFFFFFF) << 32)
+    // TODO: Validate
 
     override def readText(length: Int, charset: Charset): String = {
       val bytes = new Array[Byte](length)

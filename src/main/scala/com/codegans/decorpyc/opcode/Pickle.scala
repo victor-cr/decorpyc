@@ -185,8 +185,10 @@ class Pickle(key: Option[Int], _source: ByteSource) {
   }
 
   private def length(sizeOf: SizeOf): Int = sizeOf match {
+    case SizeOf.INT8 => source.readByte()
     case SizeOf.UINT8 => source.readUnsignedByte()
-    case SizeOf.UINT16 => source.readWord()
+    case SizeOf.INT16 => source.readWord()
+    case SizeOf.UINT16 => source.readUnsignedWord()
     case SizeOf.INT32 => source.readInt()
   }
 }
@@ -224,7 +226,7 @@ object Pickle {
 
   private object SizeOf extends Enumeration {
     type SizeOf = Value
-    val UINT8, UINT16, INT32 = Value
+    val INT8, UINT8, INT16, UINT16, INT32 = Value
   }
 
   private val opcodeTable: Map[Byte, OpcodeParser] = List(

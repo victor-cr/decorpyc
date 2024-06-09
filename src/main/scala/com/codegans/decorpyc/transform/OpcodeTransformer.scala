@@ -163,7 +163,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
   private def transformParameterInfo(attributes: Map[String, _]): ParameterInfo = {
     val params = attributes("parameters").asInstanceOf[List[_]].map { case (l: String) :: r :: Nil => l -> transformPyExpr(r) }.toMap
     val extra = transformString(attributes("extrakw"))
-    val extraPos = attributes("extrapos").asInstanceOf[Option[_]]
+    val extraPos = attributes.get("extrapos").flatMap(transformString)
     val positional = transformStringList(attributes.get("positional")) // List of parameter names
     val positionalOnly = attributes.getOrElse("positional_only", Nil).asInstanceOf[List[_]]
     val keywordOnly = attributes.getOrElse("keyword_only", Nil).asInstanceOf[List[_]]
@@ -209,6 +209,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "Image" => interceptor.replace(Image(this, attributes, fileName, lineNum))
     case "Style" => interceptor.replace(Style(this, attributes, fileName, lineNum))
     case "Python" => interceptor.replace(Python(this, attributes, fileName, lineNum))
+    case "EarlyPython" => interceptor.replace(EarlyPython(this, attributes, fileName, lineNum))
     case "If" => interceptor.replace(If(this, attributes, fileName, lineNum))
     case "While" => interceptor.replace(While(this, attributes, fileName, lineNum))
   }
@@ -235,6 +236,8 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "SLShowIf" => interceptor.replace(SLIf(this, attributes, fileName, lineNum))
     case "SLFor" => interceptor.replace(SLFor(this, attributes, fileName, lineNum))
     case "SLBlock" => interceptor.replace(SLBlock(this, attributes, fileName, lineNum))
+    case "SLBreak" => interceptor.replace(SLBreak(this, attributes, fileName, lineNum))
+    case "SLContinue" => interceptor.replace(SLContinue(this, attributes, fileName, lineNum))
   }
 
   private def storeInstance[T <: Node](id: Int, instance: T): T = {

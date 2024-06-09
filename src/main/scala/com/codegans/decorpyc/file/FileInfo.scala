@@ -20,49 +20,53 @@ object FileInfo {
   private val len = header.length
 
   def apply(name: String, source: ByteSource): FileInfo = {
-    //    val off = offset + len + originLen
-    //    val origin = new String(bytes, offset, originLen, "Latin1")
-    val marker = source.readText(len)
-
-    if (marker != header) {
-      log.info("Read resource raw data `{}`", name)
-      source.reset()
+    if (source.length < len) {
       ResourceFileInfo(name, source)
     } else {
-      log.info("Read Ren'Py compiled data `{}`", name)
-      val slots = Iterator.continually(SlotInfo(source.readInt(), source.readInt(), source.readInt())).takeWhile(_ != SlotInfo.terminator).toVector
+      //    val off = offset + len + originLen
+      //    val origin = new String(bytes, offset, originLen, "Latin1")
+      val marker = source.readText(len)
 
-      // Write -->
-      //      slots.foreach { slot =>
-      //        val file = new File("target", name.stripSuffix(".rpyc") + "-" + slot.id + ".rpy")
-      //
-      //        file.getParentFile.mkdirs()
-      //
-      //        log.info("Read `{}` slot #{}@{}:{}", name, slot.id, slot.start, slot.length)
-      //        source.seek(slot.start)
-      //        val zlib = source.readZLib(slot.length)
-      //        try {
-      //          val root = Pickle.optimize(Pickle(key, zlib))
-      //          Printer.write(file, root)
-      //        } catch {
-      //          case NonFatal(e) =>
-      //            log.error("Cannot process file: {}", file, e)
-      //            throw e //Ignore
-      //        }
-      //      }
-      // Write <--
+      if (marker != header) {
+        log.info("Read resource raw data `{}`", name)
+        source.reset()
+        ResourceFileInfo(name, source)
+      } else {
+        log.info("Read Ren'Py compiled data `{}`", name)
+        val slots = Iterator.continually(SlotInfo(source.readInt(), source.readInt(), source.readInt())).takeWhile(_ != SlotInfo.terminator).toVector
 
-      source.seek(slots.head.start)
+        // Write -->
+        //      slots.foreach { slot =>
+        //        val file = new File("target", name.stripSuffix(".rpyc") + "-" + slot.id + ".rpy")
+        //
+        //        file.getParentFile.mkdirs()
+        //
+        //        log.info("Read `{}` slot #{}@{}:{}", name, slot.id, slot.start, slot.length)
+        //        source.seek(slot.start)
+        //        val zlib = source.readZLib(slot.length)
+        //        try {
+        //          val root = Pickle.optimize(Pickle(key, zlib))
+        //          Printer.write(file, root)
+        //        } catch {
+        //          case NonFatal(e) =>
+        //            log.error("Cannot process file: {}", file, e)
+        //            throw e //Ignore
+        //        }
+        //      }
+        // Write <--
 
-      val compiled = source.readZLib(slots.head.length)
-      val root = Pickle(compiled)
-      val decompiled = Printer.toSource(new OpcodeTransformer(NodeInterceptor(
-        MultilineSayAspect.Body,
-        MultilineSayAspect.AST
-      )).apply(root))
+        source.seek(slots.head.start)
 
-      source.reset()
-      RenpyFileInfo(name, compiled, decompiled, slots)
+        val compiled = source.readZLib(slots.head.length)
+        val root = Pickle(compiled)
+        val decompiled = Printer.toSource(new OpcodeTransformer(NodeInterceptor(
+          MultilineSayAspect.Body,
+          MultilineSayAspect.AST
+        )).apply(root))
+
+        source.reset()
+        RenpyFileInfo(name, compiled, decompiled, slots)
+      }
     }
   }
 

@@ -93,7 +93,10 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, condition)
       children.foreach((node: Node) => write(node, indent + 1))
 
-    case Python(_, _, expectedLine, prefix, code) => writePython(code, prefix, expectedLine, indent)
+    case Python(_, _, expectedLine, prefix, code) =>
+      writePython(code, prefix, expectedLine, indent)
+    case EarlyPython(_, _, expectedLine, None, Some(BlockPyCode(source, "exec", py, lines))) =>
+      writePython(Some(BlockPyCode(source, "early", py, lines)), None, expectedLine, indent)
 
     case Say(_, _, expectedLine, text, _, _, who, withA, maybeArgs, attrs, tempAttrs, false, false) =>
       who.foreach(layout.printExpr(expectedLine, indent, _))
@@ -254,6 +257,12 @@ class Printer(layout: Layout) {
           write(node, indent + 1)
       }
 
+    case SLFor(_, SLPython(_, _, lineNum, Some(OnelinerPyCode(PyExpr(pyExpr), "exec", _))) :: children, _, expectedLine, variable, Some(PyExpr(expression)), keywords) if lineNum == expectedLine =>
+      layout.printKeyword(expectedLine, indent, "for")
+      layout.printExpr(expectedLine, indent, pyExpr.replaceFirst(s"\\s*=\\s*$variable", ""))
+      layout.printKeyword(expectedLine, indent, "in")
+      layout.printExpr(expectedLine, indent, expression)
+      children.foreach(write(_, indent + 1))
     case SLFor(_, children, _, expectedLine, variable, Some(PyExpr(expression)), keywords) =>
       layout.printKeyword(expectedLine, indent, "for")
       layout.printExpr(expectedLine, indent, variable)
@@ -263,7 +272,7 @@ class Printer(layout: Layout) {
 
     case SLUse(_, _, expectedLine, _, block, _, maybeArgs, target) =>
       layout.printKeyword(expectedLine, indent, "use")
-      layout.printExpr(expectedLine, indent, target)
+      target.foreach(layout.printExpr(expectedLine, indent, _))
       maybeArgs.foreach(layout.printArgs(expectedLine, indent, _))
       block.foreach(write(_, indent + 1))
 
@@ -277,6 +286,9 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, expression.map(_.expression).getOrElse("None"))
 
     case SLPython(_, _, expectedLine, code) => writePython(code, None, expectedLine, indent)
+
+    case SLBreak(_, _, expectedLine, _) => layout.printKeyword(expectedLine, indent, "break")
+    case SLContinue(_, _, expectedLine, _) => layout.printKeyword(expectedLine, indent, "continue")
 
     case SLBlock(_, children, _, expectedLine, keyword) =>
       keyword.foreach {

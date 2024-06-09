@@ -1,6 +1,6 @@
 package com.codegans.decorpyc.ast.sl
 
-import com.codegans.decorpyc.ast.{ASTNode, ArgumentInfo, Attributes, NodeContext}
+import com.codegans.decorpyc.ast.{ASTNode, ArgumentInfo, Attributes, NodeContext, PyExpr}
 
 case class SLUse(override val attributes: Map[String, _],
                  override val fileName: String,
@@ -9,7 +9,7 @@ case class SLUse(override val attributes: Map[String, _],
                  block: List[SLNode],
                  id: Option[_],
                  args: Option[ArgumentInfo],
-                 target: String
+                 target: Option[PyExpr]
                 ) extends SLNode with Attributes
 
 object SLUse extends SLNodeFactory[SLUse] {
@@ -24,7 +24,7 @@ object SLUse extends SLNodeFactory[SLUse] {
     val block = context.transformSL(attributes(keyBlock))
     val id = attributes(keyId).asInstanceOf[Option[_]]
     val args = context.transformArgumentInfo(attributes.get(keyArgs))
-    val target = attributes(keyTarget).asInstanceOf[String]
+    val target = attributes.get(keyTarget).flatMap(context.transformPyExpr)
 
     new SLUse(attributes - keyAST - keyBlock - keyId - keyArgs - keyTarget, fileName, lineNum, ast, block, id, args, target)
   }

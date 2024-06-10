@@ -36,6 +36,7 @@ class Pickle(key: Option[Int], _source: ByteSource) {
       parser.execute(this, proto).get // TODO: If exception has to be hidden modify here
       read()
     } else {
+      if (stack.size > 1) readSetDictionary()
       log.debug("End-of-input has been reached")
       this
     }
@@ -86,12 +87,12 @@ class Pickle(key: Option[Int], _source: ByteSource) {
 
     stack.pop() // markobject
     val map = list.toMap
-    val parent = stack.pop()
 
-    if (parent == Map()) {
-      stack.push(map)
-    } else {
-      stack.push(MapInstanceWithData(parent, map))
+    stack.pop() match {
+      case value: Map[Any, Any] =>
+        stack.push(value ++ map)
+      case value =>
+        stack.push(MapInstanceWithData(value, map))
     }
   }
 
@@ -202,6 +203,10 @@ object Pickle {
 
   def apply(source: ByteSource, maybeKey: Option[Int]): OpcodeRoot = {
     val stack = new Pickle(maybeKey, source).read().stack
+
+    if (stack.size > 1) {
+      throw new IllegalArgumentException(s"Stack had to be collapsed into a single value, but found ${stack.size} entries")
+    }
 
     transform(stack.pop())
   }

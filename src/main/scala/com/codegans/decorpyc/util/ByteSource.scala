@@ -12,6 +12,8 @@ import java.nio.file.{Files, Path, StandardOpenOption}
 import java.nio.{ByteBuffer, ByteOrder}
 
 trait ByteSource extends AutoCloseable {
+  def canRead: Boolean
+
   def offset: Long
 
   def remaining: Long
@@ -102,6 +104,8 @@ object ByteSource {
 
 
   private class BufferedByteSource(data: ByteBuffer) extends ByteSource {
+    override def canRead: Boolean = data.hasRemaining
+
     override def offset: Long = data.position()
 
     override def remaining: Long = data.remaining()
@@ -169,6 +173,13 @@ object ByteSource {
     cleaner.register(this, () => close())
     reset()
 
+    override def canRead: Boolean = if (in.read() < 0) {
+      false
+    } else {
+      in.seek(in.getFilePointer - 1)
+      true
+    }
+
     override def offset: Long = in.getFilePointer
 
     override def remaining: Long = length - offset
@@ -197,13 +208,13 @@ object ByteSource {
     override def readWord(): Short = java.lang.Short.reverseBytes(in.readShort())
 
     override def readUnsignedWord(): Int = java.lang.Short.toUnsignedInt(readWord())
-//      0 | (in.readByte() & 0xFF) | ((in.readByte() & 0xFF) << 8)
+    //      0 | (in.readByte() & 0xFF) | ((in.readByte() & 0xFF) << 8)
 
     override def readInt(): Int = java.lang.Integer.reverseBytes(in.readInt())
-//      0 | (in.readByte() & 0xFF) | ((in.readByte() & 0xFF) << 8) | ((in.readByte() & 0xFF) << 16) | ((in.readByte() & 0xFF) << 24)
+    //      0 | (in.readByte() & 0xFF) | ((in.readByte() & 0xFF) << 8) | ((in.readByte() & 0xFF) << 16) | ((in.readByte() & 0xFF) << 24)
 
     override def readLong(): Long = java.lang.Long.reverseBytes(in.readLong())
-//      0L | (in.readInt() & 0xFFFFFFFF) | ((in.readInt() & 0xFFFFFFFF) << 32)
+    //      0L | (in.readInt() & 0xFFFFFFFF) | ((in.readInt() & 0xFFFFFFFF) << 32)
     // TODO: Validate
 
     override def readText(length: Int, charset: Charset): String = {

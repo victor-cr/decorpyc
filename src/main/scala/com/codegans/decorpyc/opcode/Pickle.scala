@@ -24,7 +24,7 @@ class Pickle(key: Option[Int], _source: ByteSource) {
 
   @tailrec
   private def read(): Pickle = {
-    if (source.remaining != 0) {
+    if (source.canRead) {
       val offset = source.offset
       val opcode = source.readByte()
 
@@ -35,10 +35,13 @@ class Pickle(key: Option[Int], _source: ByteSource) {
 
       parser.execute(this, proto).get // TODO: If exception has to be hidden modify here
       read()
-    } else {
-      if (stack.size > 1) readSetDictionary()
+    } else if (frames.isEmpty) {
       log.debug("End-of-input has been reached")
       this
+    } else {
+      frames.remove(frames.size - 1)
+      log.debug("End-of-frame has been reached")
+      read()
     }
   }
 

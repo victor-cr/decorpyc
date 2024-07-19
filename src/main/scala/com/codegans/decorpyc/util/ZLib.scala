@@ -20,7 +20,7 @@ object ZLib {
     val out = new BufferedOutputStream(new FileOutputStream(file), bufferSize)
 
     try {
-      log.debug(s"Created file-based inflater #$id (with offset: $offset and size: $size)")
+      log.debug(s"Created file-based inflater #$id (with offset $offset and size $size): ${file.getAbsolutePath}")
       if (size < Int.MaxValue) {
         inflater.setInput(input.getChannel.map(MapMode.READ_ONLY, offset, size))
         inflate(id, inflater, out)

@@ -7,7 +7,7 @@ case class SLUse(override val attributes: Map[String, _],
                  override val lineNum: Int,
                  ast: List[ASTNode],
                  block: List[SLNode],
-                 id: Option[_],
+                 id: Option[PyExpr],
                  args: Option[ArgumentInfo],
                  target: Option[PyExpr]
                 ) extends SLNode with Attributes
@@ -22,7 +22,7 @@ object SLUse extends SLNodeFactory[SLUse] {
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): SLUse = {
     val ast = context.transformAST(attributes(keyAST))
     val block = context.transformSL(attributes(keyBlock))
-    val id = attributes(keyId).asInstanceOf[Option[_]]
+    val id = attributes.get(keyId).flatMap(context.transformPyExpr)
     val args = context.transformArgumentInfo(attributes.get(keyArgs))
     val target = attributes.get(keyTarget).flatMap(context.transformPyExpr)
 

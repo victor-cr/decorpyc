@@ -228,6 +228,8 @@ object Pickle {
     case MapInstanceWithData(map: MapInstanceWithData, data: Map[String, _]) =>
       val root = transform(map)
       root.copy(attributes = data ++ root.attributes)
+    case SetMapItem(index: Map[String, _], key: String, value: List[_]) =>
+      OpcodeRoot(index + (key -> value), Nil)
     case value =>
       throw new IllegalArgumentException(s"Unexpected root format: $value")
   }

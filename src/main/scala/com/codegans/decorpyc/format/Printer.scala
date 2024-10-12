@@ -354,6 +354,10 @@ class Printer(layout: Layout) {
         children.foreach(writeATL(_, indent + 1))
       }
 
+    case ATLRawTime(_, _, expectedLine, expr) =>
+      layout.printKeyword(expectedLine, indent, "time", exclusive = true)
+      expr.foreach(e => layout.printExpr(expectedLine, indent, e))
+
     case ATLRawChild(_, children, _, expectedLine) =>
       children.foreach(writeATL(_, indent))
 

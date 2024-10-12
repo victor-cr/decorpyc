@@ -221,6 +221,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "RawRepeat" => interceptor.replace(ATLRawRepeat(this, attributes, fileName, lineNum))
     case "RawFunction" => interceptor.replace(ATLRawFunction(this, attributes, fileName, lineNum))
     case "RawOn" => interceptor.replace(ATLRawOn(this, attributes, fileName, lineNum))
+    case "RawTime" => interceptor.replace(ATLRawTime(this, attributes, fileName, lineNum))
     case "RawMultipurpose" => interceptor.replace(ATLRawMultipurpose(this, attributes, fileName, lineNum))
     case "RawParallel" => interceptor.replace(ATLRawParallel(this, attributes, fileName, lineNum))
   }

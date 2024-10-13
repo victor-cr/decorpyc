@@ -16,23 +16,25 @@ class Layout(doubleQuotedText: Boolean = true) {
     this
   }
 
+  def hasKeywordAt(line: Int, predicate: Keyword => Boolean): Boolean =
+    lines.get(line).exists(_.headOption.exists(e => e.isInstanceOf[Keyword] && predicate(e.asInstanceOf[Keyword])))
+
+  def cleanAt(line: Int): Layout = {
+    lines.put(line, new mutable.TreeSet[Markup]())
+    this
+  }
+
   def printKeyword(line: Int, indent: Int, keyword: String, exclusive: Boolean = false): Layout = {
     val maybeLine = lines.get(line)
     val hasContent = maybeLine.exists(_.nonEmpty)
 
-    if (hasContent) {
-      if (exclusive) {
-        if (possibleExclusiveCommandConflict.contains(keyword)) {
-          log.debug("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
-        } else {
-          log.warn("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
-        }
-        this
-      } else if (keyword == "label" && maybeLine.exists(_.head.value == "call")) { // Edge case for: `call <label> from _call_<label>`
-        rawPrint(line, Keyword(indent, id, "from"))
+    if (hasContent && exclusive) {
+      if (possibleExclusiveCommandConflict.contains(keyword)) {
+        log.debug("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
       } else {
-        rawPrint(line, Keyword(indent, id, keyword))
+        log.warn("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
       }
+      this
     } else {
       rawPrint(line, Keyword(indent, id, keyword))
     }
@@ -109,7 +111,7 @@ class Layout(doubleQuotedText: Boolean = true) {
 
   def printExpr(line: Int, indent: Int, expr: Int): Layout = rawPrint(line, Expr(indent, id, String.valueOf(expr)))
 
-  def printExpr(line: Int, indent: Int, expr: PyExpr): Layout = rawPrint(line, Expr(indent, id, expr.expression)) //TODO: maybe validate positiona
+  def printExpr(line: Int, indent: Int, expr: PyExpr): Layout = rawPrint(line, Expr(indent, id, expr.expression)) //TODO: maybe validate position
 
   def printOpen(line: Int, indent: Int, value: String = "("): Layout = rawPrint(line, Open(indent, id, value))
 
@@ -122,6 +124,8 @@ class Layout(doubleQuotedText: Boolean = true) {
   def printValue(line: Int, indent: Int, expr: PyExpr): Layout = rawPrint(line, Value(indent, id, expr.expression)) //TODO: maybe validate position
 
   def printClose(line: Int, indent: Int, value: String = ")"): Layout = rawPrint(line, Close(indent, id, value))
+
+  def printColon(line: Int, indent: Int, value: String = ":"): Layout = rawPrint(line, Colon(indent, id, value))
 
   def printComment(line: Int, indent: Int, comment: String): Layout = rawPrint(line, Comment(Int.MaxValue, id, comment))
 

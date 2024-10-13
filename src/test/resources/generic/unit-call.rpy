@@ -2,6 +2,8 @@ label call_start:
 
     e "First, we will call a subroutine."
 
+    call simple from _call_simple
+
     call call_subroutine
 
     call call_subroutine(2)
@@ -10,6 +12,8 @@ label call_start:
 
     return
 
+label simple:
+    return
 
 label call_subroutine(count=1):
 

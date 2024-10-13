@@ -14,12 +14,14 @@ class PrettyPrint(layout: Layout) {
         Iterator.range(0, indent).foreach(_ => out.print(indentText))
         out.print(value)
 
-      case (Some((prevLine, Markup(prevIndent, _))), (currentLine, Markup(currentIndent, value))) if prevLine != currentLine =>
-        if (prevIndent < currentIndent) out.print(':')
+      case (Some((prevLine, prev@Markup(prevIndent, _))), (currentLine, Markup(currentIndent, value))) if prevLine != currentLine =>
+        if (prevIndent < currentIndent && !prev.isInstanceOf[Colon]) out.print(':')
         Iterator.range(prevLine, currentLine).foreach(_ => out.println())
         Iterator.range(0, currentIndent).foreach(_ => out.print(indentText))
         out.print(value.stripTrailing())
 
+      case (Some(_), (_, Colon(_, _, value))) =>
+        out.print(value)
       case (Some((_, _: Expr)), (_, Open(_, _, value))) =>
         out.print(value)
       case (Some((_, _: Markup)), (_, Close(_, _, value))) =>

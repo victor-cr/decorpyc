@@ -41,4 +41,6 @@ package object format {
 
   case class Close(override val indent: Int, override val id: Int, value: String) extends Markup
 
+  case class Colon(override val indent: Int, override val id: Int, value: String) extends Markup
+
 }

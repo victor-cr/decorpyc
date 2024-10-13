@@ -4,13 +4,12 @@ import com.codegans.decorpyc.ast.IfCondition.ConditionType
 import com.codegans.decorpyc.ast._
 import com.codegans.decorpyc.ast.atl._
 import com.codegans.decorpyc.ast.sl._
-import com.codegans.decorpyc.format.Printer.{indentText, log}
+import com.codegans.decorpyc.format.Printer.log
 import com.codegans.decorpyc.util.ByteSource
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.io.{ByteArrayOutputStream, File, FileWriter, PrintWriter}
+import java.io.File
 import java.nio.charset.StandardCharsets
-import scala.collection.mutable.ListBuffer
 
 
 class Printer(layout: Layout) {
@@ -68,15 +67,15 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, "=")
       layout.printExpr(expectedLine, indent, maybeCode.map(_.source.expression).getOrElse("None"))
 
-    case Label(_, Nil, _, expectedLine, labelName, _) =>
-      log.info("Encountered barren/virtual label: {}", labelName)
-      layout.printKeyword(expectedLine, indent, "label")
+    case Label(_, Nil, _, expectedLine, labelName, _) if layout.hasKeywordAt(expectedLine, _.value == "call") =>
+      log.info("Apply edge case for nameable `call` statement. Convert barren `label` into `from`.")
+      layout.printKeyword(expectedLine, indent, "from")
       layout.printExpr(expectedLine, indent, labelName)
-
     case Label(_, children, _, expectedLine, labelName, params) =>
       layout.printKeyword(expectedLine, indent, "label", exclusive = true)
       layout.printExpr(expectedLine, indent, labelName)
       params.foreach(layout.printArgs(expectedLine, indent, _))
+      layout.printColon(expectedLine, indent)
       children.foreach((node: Node) => write(node, indent + 1))
 
     case UserStatement(_, children, _, expectedLine, text, _, _, _) =>
@@ -442,6 +441,11 @@ class Printer(layout: Layout) {
   private def writeMenu(menu: Menu, indent: Int): Unit = {
     val expectedLine = menu.lineNum
     var line = expectedLine
+
+    if (layout.hasKeywordAt(expectedLine, e => e.indent == indent && e.value == "label")) {
+      log.info("Apply edge case for nameable `menu`. Replace barren `label` by `menu`.")
+      layout.cleanAt(expectedLine)
+    }
 
     layout.printKeyword(expectedLine, indent, "menu", exclusive = true)
     menu.args.foreach(layout.printArgs(expectedLine, indent, _))

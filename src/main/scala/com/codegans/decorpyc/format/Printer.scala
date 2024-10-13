@@ -68,8 +68,11 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, "=")
       layout.printExpr(expectedLine, indent, maybeCode.map(_.source.expression).getOrElse("None"))
 
-    case Label(_, Nil, _, _, labelName, _) =>
-      log.debug("Ignore virtual label: {}", labelName)
+    case Label(_, Nil, _, expectedLine, labelName, _) =>
+      log.info("Encountered barren/virtual label: {}", labelName)
+      layout.printKeyword(expectedLine, indent, "label")
+      layout.printExpr(expectedLine, indent, labelName)
+
     case Label(_, children, _, expectedLine, labelName, params) =>
       layout.printKeyword(expectedLine, indent, "label", exclusive = true)
       layout.printExpr(expectedLine, indent, labelName)

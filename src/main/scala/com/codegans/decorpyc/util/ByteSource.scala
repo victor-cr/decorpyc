@@ -237,7 +237,7 @@ object ByteSource {
     }
 
     override def writeTo(file: File, length: Long): Unit = {
-      val outChannel = FileChannel.open(file.toPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+      val outChannel = FileChannel.open(file.toPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
 
       try {
         channel.transferTo(offset, length, outChannel)

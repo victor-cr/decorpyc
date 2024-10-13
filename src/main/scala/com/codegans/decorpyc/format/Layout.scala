@@ -17,13 +17,22 @@ class Layout(doubleQuotedText: Boolean = true) {
   }
 
   def printKeyword(line: Int, indent: Int, keyword: String, exclusive: Boolean = false): Layout = {
-    if (exclusive && lines.get(line).exists(_.nonEmpty)) {
-      if (possibleExclusiveCommandConflict.contains(keyword)) {
-        log.debug("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
+    val maybeLine = lines.get(line)
+    val hasContent = maybeLine.exists(_.nonEmpty)
+
+    if (hasContent) {
+      if (exclusive) {
+        if (possibleExclusiveCommandConflict.contains(keyword)) {
+          log.debug("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
+        } else {
+          log.warn("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
+        }
+        this
+      } else if (keyword == "label" && maybeLine.exists(_.head.value == "call")) { // Edge case for: `call <label> from _call_<label>`
+        rawPrint(line, Keyword(indent, id, "from"))
       } else {
-        log.warn("Ignoring attempt to write exclusive command `{}` at already populated line #{}", keyword, line)
+        rawPrint(line, Keyword(indent, id, keyword))
       }
-      this
     } else {
       rawPrint(line, Keyword(indent, id, keyword))
     }

@@ -32,6 +32,8 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
       val fileName = attributes("filename").asInstanceOf[String]
       val lineNum = attributes("linenumber").asInstanceOf[Int]
       List(storeInstance(id, transformAST(className, attributes - "filename" - "linenumber", fileName, lineNum)))
+    case (fileName: String) :: (lineNum: Int) :: (text: String) :: (block: List[_]) :: Nil =>
+      List(UserStatement(Map(), block.flatMap(transformAST), fileName, lineNum, text, false, Nil, Nil))
     case value => throw new IllegalArgumentException(s"Unknown AST instruction: $value")
   }
 
@@ -190,6 +192,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case "With" => interceptor.replace(With(this, attributes, fileName, lineNum))
     case "Scene" => interceptor.replace(Scene(this, attributes, fileName, lineNum))
     case "Screen" => interceptor.replace(Screen(this, attributes, fileName, lineNum))
+    case "Camera" => interceptor.replace(Camera(this, attributes, fileName, lineNum))
     case "Show" => interceptor.replace(Show(this, attributes, fileName, lineNum))
     case "ShowLayer" => interceptor.replace(ShowLayer(this, attributes, fileName, lineNum))
     case "Hide" => interceptor.replace(Hide(this, attributes, fileName, lineNum))

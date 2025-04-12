@@ -60,7 +60,10 @@ class Pickle(key: Option[Int], _source: ByteSource) {
 
   private def readAppend(single: Boolean): Unit = {
     val value: List[Any] = if (single) List(stack.pop()) else Iterator.continually(stack.pop()).takeWhile(_ != OpcodeMarkObject).toList.reverse
-    val list: List[Any] = stack.pop().asInstanceOf[List[_]] ++ value
+    val list: List[Any] = stack.pop() match {
+      case list: List[_] => list ++ value
+      case NewInstance(_, GlobalFunction("renpy.revertable", "RevertableList"), Nil) => value
+    }
     stack.push(list)
   }
 

@@ -29,7 +29,7 @@ object Menu extends ASTNodeFactory[Menu] {
     val args = context.transformArgumentInfo(attributes.get(keyArguments))
     val itemArgs = context.transformList(attributes.get(keyItemArguments)).map(context.transformArgumentInfo)
     val startStatement = attributes.get(keyStatementStart).map(context.ref)
-    val hasCaption = attributes(keyHasCaption).asInstanceOf[Boolean]
+    val hasCaption = attributes.get(keyHasCaption).forall(_.asInstanceOf[Boolean])
 
     val children: ListBuffer[MenuItem] = new ListBuffer()
     var caption: Option[String] = None

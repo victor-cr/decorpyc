@@ -86,6 +86,7 @@ package object ast {
 
     def transformString: PartialFunction[Any, Option[String]] = {
       case value: String => Some(value)
+      case value: Integer => Some(value.toString)
       case None => None
       case Some(value) => transformString(value)
     }

@@ -28,7 +28,7 @@ object SLDisplayable extends SLNodeFactory[SLDisplayable] {
       case Some(GlobalFunction("renpy.sl2.sldisplayables", "sl2add")) => Some("add")
       case Some(GlobalFunction("renpy.ui", "_textbutton")) => Some("textbutton")
       case Some(GlobalFunction(p, c)) =>
-        attributes.get(keyStyle).filter(e => e != None).map(_.asInstanceOf[String]).orElse(Some(p + '.' + c))
+        attributes.get(keyStyle).flatMap(context.transformString).orElse(Some(p + '.' + c))
       case _ =>
         throw new IllegalArgumentException("Unsupported displayable")
     }

@@ -305,6 +305,11 @@ class Printer(layout: Layout) {
       writePyExpr(atList, Some("at"), expectedLine, indent + 1)
       atl.foreach(writeATL(_, indent, initial = true))
 
+    case Camera(_, atl, _, expectedLine, _, atList, _) =>
+      layout.printKeyword(expectedLine, indent, "camera")
+      writePyExpr(atList, Some("at"), expectedLine, indent + 1)
+      atl.foreach(writeATL(_, indent, initial = true))
+
     case ShowLayer(_, atl, _, expectedLine, layer, atList) =>
       layout.printKeyword(expectedLine, indent, "show layer")
       layout.printExpr(expectedLine, indent, layer)

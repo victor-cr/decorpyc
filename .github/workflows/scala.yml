@@ -24,7 +24,7 @@ jobs:
         distribution: 'temurin'
         cache: 'sbt'
 
-    - name: Setup SBT launcher
+    - name: Set up SBT launcher
       uses: sbt/setup-sbt@v1
 
     - name: SBT Run Tests

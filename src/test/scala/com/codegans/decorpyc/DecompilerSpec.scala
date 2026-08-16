@@ -46,7 +46,7 @@ object DecompilerSpec {
 
   private val genericDir: File = new File(this.getClass.getClassLoader.getResource("generic").toURI).getAbsoluteFile.getCanonicalFile
   private val rootDir: File = genericDir.getParentFile.getAbsoluteFile.getCanonicalFile
-  //  private val versionDirs: List[File] = List(new File(rootDir, "v7.3").getAbsoluteFile.getCanonicalFile) // rootDir.listFiles(versionFilter).map(_.getAbsoluteFile.getCanonicalFile).toList
+//    private val versionDirs: List[File] = List(new File(rootDir, "v8.4").getAbsoluteFile.getCanonicalFile) // rootDir.listFiles(versionFilter).map(_.getAbsoluteFile.getCanonicalFile).toList
   private val versionDirs: List[File] = rootDir.listFiles(versionFilter).map(_.getAbsoluteFile.getCanonicalFile).toList
 
   private val genericTests: List[(File, String)] = genericDir.listFiles(renpyFilter).map(file => genericDir -> relativize(genericDir, file)).toList

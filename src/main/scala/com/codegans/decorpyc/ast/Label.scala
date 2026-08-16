@@ -1,12 +1,12 @@
 package com.codegans.decorpyc.ast
 
-case class Label private(override val attributes: Map[String, _],
-                         override val children: List[ASTNode],
-                         override val fileName: String,
-                         override val lineNum: Int,
-                         labelName: String,
-                         params: Option[ParameterInfo]
-                        ) extends ASTNode with Attributes with ChildrenList[ASTNode]
+case class Label(override val attributes: Map[String, _],
+                 override val children: List[ASTNode],
+                 override val fileName: String,
+                 override val lineNum: Int,
+                 labelName: String,
+                 params: Option[ParameterInfo]
+                ) extends ASTNode with Attributes with ChildrenList[ASTNode]
 
 object Label extends ASTNodeFactory[Label] {
   private val keyBlock: String = "block"
@@ -19,6 +19,6 @@ object Label extends ASTNodeFactory[Label] {
     val params = context.transformParameterInfo(attributes.get(keyParameters))
     val name = attributes.getOrElse(keyName, attributes(key_Name)).asInstanceOf[String]
 
-    new Label(attributes - keyBlock - keyParameters - keyName- key_Name, children, fileName, lineNum, name, params)
+    new Label(attributes - keyBlock - keyParameters - keyName - key_Name, children, fileName, lineNum, name, params)
   }
 }

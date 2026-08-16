@@ -9,7 +9,6 @@ import com.codegans.decorpyc.transform.OpcodeTransformer.defaultPyVersion
 
 import scala.annotation.switch
 import scala.collection.mutable.ListBuffer
-import scala.math.ScalaNumber
 
 class OpcodeTransformer(interceptor: NodeInterceptor, override val version: Int) extends NodeContext with Function[OpcodeInstruction, Root] {
   private val instanceTable: ListBuffer[Option[Node]] = ListBuffer()
@@ -36,7 +35,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor, override val version: Int)
       val lineNum = attributes("linenumber").asInstanceOf[Int]
       List(storeInstance(id, transformAST(className, attributes - "filename" - "linenumber", fileName, lineNum)))
     case (fileName: String) :: (lineNum: Int) :: (text: String) :: (block: List[_]) :: Nil =>
-      List(UserStatement(Map(), block.flatMap(transformAST), fileName, lineNum, text, false, Nil, Nil))
+      List(UserStatement(Map(), block.flatMap(transformAST), fileName, lineNum, text, translatable = false, Nil, Nil))
     case value => throw new IllegalArgumentException(s"Unknown AST instruction: $value")
   }
 
@@ -71,13 +70,13 @@ class OpcodeTransformer(interceptor: NodeInterceptor, override val version: Int)
     case num: Int => Some(StringPyExpr(num.toString))
     case code: PyCode => Some(code.source)
     case expr: PyExpr => Some(expr)
-    case Invocation(GlobalFunction(`packagePyExpr`, "PyExpr"), (expression: String) :: (fileName: String) :: (lineNum: Int) :: (py: Int) :: _ :: _ :: Nil) =>
+    case Invocation(GlobalFunction(packagePyExp, "PyExpr"), (expression: String) :: (fileName: String) :: (lineNum: Int) :: (py: Int) :: _ :: _ :: Nil) if packagePyExp.startsWith("renpy.ast") =>
       Some(DebugPyExpr(expression, fileName, lineNum, py))
-    case NewInstance(id, GlobalFunction(`packagePyExpr`, "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: (py: Int) :: Nil) :: Nil) =>
+    case NewInstance(id, GlobalFunction(packagePyExp, "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: (py: Int) :: Nil) :: Nil) if packagePyExp.startsWith("renpy.ast") =>
       Some(storeInstance(id, DebugPyExpr(expression, fileName, lineNum, py)))
-    case NewInstance(id, GlobalFunction(`packagePyExpr`, "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: Nil) :: Nil) =>
+    case NewInstance(id, GlobalFunction(packagePyExp, "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: Nil) :: Nil) if packagePyExp.startsWith("renpy.ast") =>
       Some(storeInstance(id, DebugPyExpr(expression, fileName, lineNum, defaultPyVersion)))
-    case SetUpdate(NewInstance(id, GlobalFunction(`packagePyExpr`, "PyExpr"), (expression: String) :: (_: List[_]) :: Nil), attributes: Map[String, _]) =>
+    case SetUpdate(NewInstance(id, GlobalFunction(packagePyExp, "PyExpr"), (expression: String) :: (_: List[_]) :: Nil), attributes: Map[String, _]) if packagePyExp.startsWith("renpy.ast") =>
       val fileName = attributes("filename").asInstanceOf[String]
       val lineNum = attributes("linenumber").asInstanceOf[Int]
       val py = attributes.get("py").map(_.asInstanceOf[Int]).getOrElse(defaultPyVersion)

@@ -6,7 +6,7 @@ import scala.sys.process.*
 
 object RenPyPlugin extends AutoPlugin {
   private val versions: Seq[String] = Seq(
-    "8.5.0",  // "In Good Health"
+    "8.5.3",  // "We Can Go to the Moon", "In Good Health"
     "8.4.1",  // "Tomorrowland"
     "8.3.7",  // "Second Star to the Right"
     "8.2.3",  // "64bit Sensation"

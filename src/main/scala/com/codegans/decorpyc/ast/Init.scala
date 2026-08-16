@@ -1,11 +1,11 @@
 package com.codegans.decorpyc.ast
 
-case class Init private(override val attributes: Map[String, _],
-                        override val children: List[ASTNode],
-                        override val fileName: String,
-                        override val lineNum: Int,
-                        priority: Int
-                       ) extends ASTNode with Attributes with ChildrenList[ASTNode]
+case class Init(override val attributes: Map[String, _],
+                override val children: List[ASTNode],
+                override val fileName: String,
+                override val lineNum: Int,
+                priority: Int
+               ) extends ASTNode with Attributes with ChildrenList[ASTNode]
 
 object Init extends ASTNodeFactory[Init] {
   private val keyBlock: String = "block"

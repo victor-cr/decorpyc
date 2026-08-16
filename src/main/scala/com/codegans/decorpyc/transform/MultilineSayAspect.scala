@@ -1,7 +1,7 @@
 package com.codegans.decorpyc.transform
 
 import com.codegans.decorpyc.ast
-import com.codegans.decorpyc.ast.{ASTNode, Body, ChildrenList, IfCondition, Init, Label, MenuItem, Node, Say, Translate, UserStatement}
+import com.codegans.decorpyc.ast._
 
 import scala.annotation.switch
 import scala.collection.mutable.ListBuffer
@@ -17,12 +17,12 @@ object MultilineSayAspect {
 
   val AST: Aspect[ASTNode] = new Aspect[ASTNode] {
     override def isApplicable(node: Node): Boolean = (node: @switch) match {
-      case parent: Init => true
-      case parent: Label => true
-      case parent: IfCondition => true
-      case parent: MenuItem => true
-      case parent: Translate => true
-      case parent: UserStatement => true
+      case _: Init => true
+      case _: Label => true
+      case _: IfCondition => true
+      case _: MenuItem => true
+      case _: Translate => true
+      case _: UserStatement => true
       case _ => false
     }
 

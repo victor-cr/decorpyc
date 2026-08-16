@@ -2,7 +2,7 @@ package com.codegans.decorpyc.file
 
 import com.codegans.decorpyc.format.Printer
 import com.codegans.decorpyc.opcode.Pickle
-import com.codegans.decorpyc.transform.{MultilineSayAspect, NodeInterceptor, OpcodeTransformer}
+import com.codegans.decorpyc.transform.{ImplicitReturn, MultilineSayAspect, NodeInterceptor, OpcodeTransformer}
 import com.codegans.decorpyc.util.ByteSource
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -61,7 +61,8 @@ object FileInfo {
         val root = Pickle(compiled)
         val decompiled = Printer.toSource(OpcodeTransformer(NodeInterceptor(
           MultilineSayAspect.Body,
-          MultilineSayAspect.AST
+          MultilineSayAspect.AST,
+          ImplicitReturn
         ), root).apply(root))
 
         source.reset()

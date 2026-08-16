@@ -28,13 +28,13 @@ object Say extends ASTNodeFactory[Say] {
   private val keyStatementStart: String = "statement_start"
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): Say = {
-    val withA = context.transformPyExpr(attributes(keyWithA))
+    val withA = attributes.get(keyWithA).flatMap(context.transformPyExpr)
     val who = context.transformPyExpr(attributes.get(keyWho))
     val attrs = context.transformStringList(attributes.get(keyAttributes))
     val tempAttrs = context.transformStringList(attributes.get(keyTemporaryAttributes))
     val args = context.transformArgumentInfo(attributes.get(keyArguments))
     val what = attributes(keyWhat).asInstanceOf[String]
-    val interact = attributes(keyInteract).asInstanceOf[Boolean]
+    val interact = attributes.getOrElse(keyInteract, false).asInstanceOf[Boolean]
     val whoFast = attributes(keyWhoFast).asInstanceOf[Boolean]
     val referenced = attributes.contains(keyStatementStart)
 

@@ -15,7 +15,7 @@ object Call extends ASTNodeFactory[Call] {
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): Call = {
     val label = context.transformPyExpr(attributes(keyLabel)).get
-    val expression = attributes(keyExpression).asInstanceOf[Boolean]
+    val expression = attributes.getOrElse(keyExpression, false).asInstanceOf[Boolean]
     val args = context.transformArgumentInfo(attributes.get(keyArguments))
 
     new Call(attributes - keyLabel - keyExpression - keyArguments, fileName, lineNum, label, expression, args)

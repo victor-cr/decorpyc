@@ -9,9 +9,12 @@ import com.codegans.decorpyc.transform.OpcodeTransformer.defaultPyVersion
 
 import scala.annotation.switch
 import scala.collection.mutable.ListBuffer
+import scala.math.ScalaNumber
 
-class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with Function[OpcodeInstruction, Root] {
+class OpcodeTransformer(interceptor: NodeInterceptor, override val version: Int) extends NodeContext with Function[OpcodeInstruction, Root] {
   private val instanceTable: ListBuffer[Option[Node]] = ListBuffer()
+
+  private val packagePyExpr: String = if (version >= 5003000) "renpy.astsupport" else "renpy.ast"
 
   override def ref(id: Int): NodeRef = new NodeRef(instanceTable(id).get)
 
@@ -68,11 +71,13 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case num: Int => Some(StringPyExpr(num.toString))
     case code: PyCode => Some(code.source)
     case expr: PyExpr => Some(expr)
-    case NewInstance(id, GlobalFunction("renpy.ast", "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: (py: Int) :: Nil) :: Nil) =>
+    case Invocation(GlobalFunction(`packagePyExpr`, "PyExpr"), (expression: String) :: (fileName: String) :: (lineNum: Int) :: (py: Int) :: _ :: _ :: Nil) =>
+      Some(DebugPyExpr(expression, fileName, lineNum, py))
+    case NewInstance(id, GlobalFunction(`packagePyExpr`, "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: (py: Int) :: Nil) :: Nil) =>
       Some(storeInstance(id, DebugPyExpr(expression, fileName, lineNum, py)))
-    case NewInstance(id, GlobalFunction("renpy.ast", "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: Nil) :: Nil) =>
+    case NewInstance(id, GlobalFunction(`packagePyExpr`, "PyExpr"), (expression: String) :: ((fileName: String) :: (lineNum: Int) :: Nil) :: Nil) =>
       Some(storeInstance(id, DebugPyExpr(expression, fileName, lineNum, defaultPyVersion)))
-    case SetUpdate(NewInstance(id, GlobalFunction("renpy.ast", "PyExpr"), (expression: String) :: (_: List[_]) :: Nil), attributes: Map[String, _]) =>
+    case SetUpdate(NewInstance(id, GlobalFunction(`packagePyExpr`, "PyExpr"), (expression: String) :: (_: List[_]) :: Nil), attributes: Map[String, _]) =>
       val fileName = attributes("filename").asInstanceOf[String]
       val lineNum = attributes("linenumber").asInstanceOf[Int]
       val py = attributes.get("py").map(_.asInstanceOf[Int]).getOrElse(defaultPyVersion)
@@ -88,6 +93,8 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case expr: PyExpr => Some(PyCode(expr, "eval", defaultPyVersion))
     case SetState(NewInstance(id, GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: (source: String) :: ((fileName: String) :: (lineNum: Int) :: (_: Int) :: Nil) :: (mode: String) :: (py: Int) :: Nil) =>
       Some(storeInstance(id, PyCode(DebugPyExpr(source, fileName, lineNum, py), mode, py)))
+    case SetState(NewInstance(id, GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: source :: (_: List[_]) :: (mode: String) :: (py: Int) :: _ :: _ :: Nil) =>
+      transformPyExpr(source).map(expr => storeInstance(id, ast.PyCode(expr, mode, py)))
     case SetState(NewInstance(id, GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: source :: (_: List[_]) :: (mode: String) :: (py: Int) :: Nil) =>
       transformPyExpr(source).map(expr => storeInstance(id, ast.PyCode(expr, mode, py)))
     case SetState(NewInstance(id, GlobalFunction("renpy.ast", "PyCode"), Nil), 1 :: source :: (_: List[_]) :: (mode: String) :: Nil) =>
@@ -100,6 +107,8 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
     case Some(value) => transformArgumentInfo(value)
     case SetUpdate(NewInstance(id, GlobalFunction("renpy.ast", "ArgumentInfo"), Nil), attributes: Map[String, _]) =>
       Some(storeInstance(id, transformArgumentInfo(attributes)))
+    case NewInstance(id, GlobalFunction("renpy.parameter", "ArgumentInfo"), Nil) =>
+      Some(storeInstance(id, ArgumentInfo(Map(), Nil, Nil, Nil, 0)))
     case SetUpdate(NewInstance(id, GlobalFunction("renpy.parameter", "ArgumentInfo"), Nil), attributes: Map[String, _]) =>
       Some(storeInstance(id, transformArgumentInfo(attributes)))
     case value => throw new IllegalArgumentException(s"Not valid ArgumentInfo object: $value")
@@ -145,7 +154,7 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
       val nodes = list.flatMap(transformAST)
 
       val header = Header(attributes, version, key)
-      val body = interceptor.replace(Body(nodes))
+      val body = interceptor.replace(Body(nodes), version)
 
       Root(header, body)
   }
@@ -185,63 +194,63 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
   }
 
   private def transformAST(renpyType: String, attributes: Map[String, _], fileName: String, lineNum: Int): ASTNode = (renpyType: @switch) match {
-    case "Init" => interceptor.replace(Init(this, attributes, fileName, lineNum))
-    case "Label" => interceptor.replace(Label(this, attributes, fileName, lineNum))
-    case "Return" => interceptor.replace(Return(this, attributes, fileName, lineNum))
-    case "Jump" => interceptor.replace(Jump(this, attributes, fileName, lineNum))
-    case "With" => interceptor.replace(With(this, attributes, fileName, lineNum))
-    case "Scene" => interceptor.replace(Scene(this, attributes, fileName, lineNum))
-    case "Screen" => interceptor.replace(Screen(this, attributes, fileName, lineNum))
-    case "Camera" => interceptor.replace(Camera(this, attributes, fileName, lineNum))
-    case "Show" => interceptor.replace(Show(this, attributes, fileName, lineNum))
-    case "ShowLayer" => interceptor.replace(ShowLayer(this, attributes, fileName, lineNum))
-    case "Hide" => interceptor.replace(Hide(this, attributes, fileName, lineNum))
-    case "UserStatement" => interceptor.replace(UserStatement(this, attributes, fileName, lineNum))
-    case "Menu" => interceptor.replace(Menu(this, attributes, fileName, lineNum))
-    case "Say" => interceptor.replace(Say(this, attributes, fileName, lineNum))
-    case "Translate" => interceptor.replace(Translate(this, attributes, fileName, lineNum))
-    case "TranslateBlock" => interceptor.replace(TranslateBlock(this, attributes, fileName, lineNum))
-    case "TranslateEarlyBlock" => interceptor.replace(TranslateBlock(this, attributes, fileName, lineNum))
-    case "TranslateString" => interceptor.replace(TranslateString(this, attributes, fileName, lineNum))
-    case "EndTranslate" => interceptor.replace(EndTranslate(this, attributes, fileName, lineNum))
-    case "Call" => interceptor.replace(Call(this, attributes, fileName, lineNum))
-    case "Pass" => interceptor.replace(Pass(this, attributes, fileName, lineNum))
-    case "Define" => interceptor.replace(Define(this, attributes, fileName, lineNum))
-    case "Default" => interceptor.replace(Default(this, attributes, fileName, lineNum))
-    case "Transform" => interceptor.replace(Transform(this, attributes, fileName, lineNum))
-    case "Image" => interceptor.replace(Image(this, attributes, fileName, lineNum))
-    case "Style" => interceptor.replace(Style(this, attributes, fileName, lineNum))
-    case "Python" => interceptor.replace(Python(this, attributes, fileName, lineNum))
-    case "EarlyPython" => interceptor.replace(EarlyPython(this, attributes, fileName, lineNum))
-    case "If" => interceptor.replace(If(this, attributes, fileName, lineNum))
-    case "While" => interceptor.replace(While(this, attributes, fileName, lineNum))
+    case "Init" => interceptor.replace(Init(this, attributes, fileName, lineNum), version)
+    case "Label" => interceptor.replace(Label(this, attributes, fileName, lineNum), version)
+    case "Return" => interceptor.replace(Return(this, attributes, fileName, lineNum), version)
+    case "Jump" => interceptor.replace(Jump(this, attributes, fileName, lineNum), version)
+    case "With" => interceptor.replace(With(this, attributes, fileName, lineNum), version)
+    case "Scene" => interceptor.replace(Scene(this, attributes, fileName, lineNum), version)
+    case "Screen" => interceptor.replace(Screen(this, attributes, fileName, lineNum), version)
+    case "Camera" => interceptor.replace(Camera(this, attributes, fileName, lineNum), version)
+    case "Show" => interceptor.replace(Show(this, attributes, fileName, lineNum), version)
+    case "ShowLayer" => interceptor.replace(ShowLayer(this, attributes, fileName, lineNum), version)
+    case "Hide" => interceptor.replace(Hide(this, attributes, fileName, lineNum), version)
+    case "UserStatement" => interceptor.replace(UserStatement(this, attributes, fileName, lineNum), version)
+    case "Menu" => interceptor.replace(Menu(this, attributes, fileName, lineNum), version)
+    case "Say" => interceptor.replace(Say(this, attributes, fileName, lineNum), version)
+    case "Translate" => interceptor.replace(Translate(this, attributes, fileName, lineNum), version)
+    case "TranslateBlock" => interceptor.replace(TranslateBlock(this, attributes, fileName, lineNum), version)
+    case "TranslateEarlyBlock" => interceptor.replace(TranslateBlock(this, attributes, fileName, lineNum), version)
+    case "TranslateString" => interceptor.replace(TranslateString(this, attributes, fileName, lineNum), version)
+    case "EndTranslate" => interceptor.replace(EndTranslate(this, attributes, fileName, lineNum), version)
+    case "Call" => interceptor.replace(Call(this, attributes, fileName, lineNum), version)
+    case "Pass" => interceptor.replace(Pass(this, attributes, fileName, lineNum), version)
+    case "Define" => interceptor.replace(Define(this, attributes, fileName, lineNum), version)
+    case "Default" => interceptor.replace(Default(this, attributes, fileName, lineNum), version)
+    case "Transform" => interceptor.replace(Transform(this, attributes, fileName, lineNum), version)
+    case "Image" => interceptor.replace(Image(this, attributes, fileName, lineNum), version)
+    case "Style" => interceptor.replace(Style(this, attributes, fileName, lineNum), version)
+    case "Python" => interceptor.replace(Python(this, attributes, fileName, lineNum), version)
+    case "EarlyPython" => interceptor.replace(EarlyPython(this, attributes, fileName, lineNum), version)
+    case "If" => interceptor.replace(If(this, attributes, fileName, lineNum), version)
+    case "While" => interceptor.replace(While(this, attributes, fileName, lineNum), version)
   }
 
   private def transformATL(renpyType: String, attributes: Map[String, _], fileName: String, lineNum: Int): ATLNode = (renpyType: @switch) match {
-    case "RawBlock" => interceptor.replace(ATLRawBlock(this, attributes, fileName, lineNum))
-    case "RawChild" => interceptor.replace(ATLRawChild(this, attributes, fileName, lineNum))
-    case "RawChoice" => interceptor.replace(ATLRawChoice(this, attributes, fileName, lineNum))
-    case "RawRepeat" => interceptor.replace(ATLRawRepeat(this, attributes, fileName, lineNum))
-    case "RawFunction" => interceptor.replace(ATLRawFunction(this, attributes, fileName, lineNum))
-    case "RawOn" => interceptor.replace(ATLRawOn(this, attributes, fileName, lineNum))
-    case "RawTime" => interceptor.replace(ATLRawTime(this, attributes, fileName, lineNum))
-    case "RawMultipurpose" => interceptor.replace(ATLRawMultipurpose(this, attributes, fileName, lineNum))
-    case "RawParallel" => interceptor.replace(ATLRawParallel(this, attributes, fileName, lineNum))
+    case "RawBlock" => interceptor.replace(ATLRawBlock(this, attributes, fileName, lineNum), version)
+    case "RawChild" => interceptor.replace(ATLRawChild(this, attributes, fileName, lineNum), version)
+    case "RawChoice" => interceptor.replace(ATLRawChoice(this, attributes, fileName, lineNum), version)
+    case "RawRepeat" => interceptor.replace(ATLRawRepeat(this, attributes, fileName, lineNum), version)
+    case "RawFunction" => interceptor.replace(ATLRawFunction(this, attributes, fileName, lineNum), version)
+    case "RawOn" => interceptor.replace(ATLRawOn(this, attributes, fileName, lineNum), version)
+    case "RawTime" => interceptor.replace(ATLRawTime(this, attributes, fileName, lineNum), version)
+    case "RawMultipurpose" => interceptor.replace(ATLRawMultipurpose(this, attributes, fileName, lineNum), version)
+    case "RawParallel" => interceptor.replace(ATLRawParallel(this, attributes, fileName, lineNum), version)
   }
 
   private def transformSL(renpyType: String, attributes: Map[String, _], fileName: String, lineNum: Int): SLNode = (renpyType: @switch) match {
-    case "SLScreen" => interceptor.replace(SLScreen(this, attributes, fileName, lineNum))
-    case "SLDisplayable" => interceptor.replace(SLDisplayable(this, attributes, fileName, lineNum))
-    case "SLUse" => interceptor.replace(SLUse(this, attributes, fileName, lineNum))
-    case "SLTransclude" => interceptor.replace(SLTransclude(this, attributes, fileName, lineNum))
-    case "SLDefault" => interceptor.replace(SLDefault(this, attributes, fileName, lineNum))
-    case "SLPython" => interceptor.replace(SLPython(this, attributes, fileName, lineNum))
-    case "SLIf" => interceptor.replace(SLIf(this, attributes, fileName, lineNum))
-    case "SLShowIf" => interceptor.replace(SLIf(this, attributes, fileName, lineNum))
-    case "SLFor" => interceptor.replace(SLFor(this, attributes, fileName, lineNum))
-    case "SLBlock" => interceptor.replace(SLBlock(this, attributes, fileName, lineNum))
-    case "SLBreak" => interceptor.replace(SLBreak(this, attributes, fileName, lineNum))
-    case "SLContinue" => interceptor.replace(SLContinue(this, attributes, fileName, lineNum))
+    case "SLScreen" => interceptor.replace(SLScreen(this, attributes, fileName, lineNum), version)
+    case "SLDisplayable" => interceptor.replace(SLDisplayable(this, attributes, fileName, lineNum), version)
+    case "SLUse" => interceptor.replace(SLUse(this, attributes, fileName, lineNum), version)
+    case "SLTransclude" => interceptor.replace(SLTransclude(this, attributes, fileName, lineNum), version)
+    case "SLDefault" => interceptor.replace(SLDefault(this, attributes, fileName, lineNum), version)
+    case "SLPython" => interceptor.replace(SLPython(this, attributes, fileName, lineNum), version)
+    case "SLIf" => interceptor.replace(SLIf(this, attributes, fileName, lineNum), version)
+    case "SLShowIf" => interceptor.replace(SLIf(this, attributes, fileName, lineNum), version)
+    case "SLFor" => interceptor.replace(SLFor(this, attributes, fileName, lineNum), version)
+    case "SLBlock" => interceptor.replace(SLBlock(this, attributes, fileName, lineNum), version)
+    case "SLBreak" => interceptor.replace(SLBreak(this, attributes, fileName, lineNum), version)
+    case "SLContinue" => interceptor.replace(SLContinue(this, attributes, fileName, lineNum), version)
   }
 
   private def storeInstance[T <: Node](id: Int, instance: T): T = {
@@ -263,4 +272,8 @@ class OpcodeTransformer(interceptor: NodeInterceptor) extends NodeContext with F
 object OpcodeTransformer {
   private val defaultPyVersion: Int = 0
 
+  def apply(interceptor: NodeInterceptor, root: OpcodeRoot): OpcodeTransformer = {
+    val version = root.attributes("version").asInstanceOf[Int]
+    new OpcodeTransformer(interceptor, version)
+  }
 }

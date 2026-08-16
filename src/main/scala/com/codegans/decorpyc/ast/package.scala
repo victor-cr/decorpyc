@@ -66,6 +66,8 @@ package object ast {
   }
 
   trait NodeContext {
+    def version: Int
+
     def ref(id: Int): NodeRef
 
     def ref(instance: Any): NodeRef
@@ -84,27 +86,27 @@ package object ast {
 
     def transformParameterInfo: PartialFunction[Any, Option[ParameterInfo]]
 
-    def transformString: PartialFunction[Any, Option[String]] = {
+    def transformString: PartialFunction[Any, Option[String]] =  {
       case value: String => Some(value)
       case value: Integer => Some(value.toString)
       case None => None
       case Some(value) => transformString(value)
     }
 
-    def transformList: PartialFunction[Any, List[_]] = {
+    def transformList:  PartialFunction[Any, List[_]] =  {
       case value: List[_] => value
       case None => Nil
       case Some(value) => transformList(value)
     }
 
-    def transformStringList: PartialFunction[Any, List[String]] = {
+    def transformStringList: PartialFunction[Any, List[String]] =  {
       case value: String => List(value)
       case value: List[String] => value
       case None => Nil
       case Some(value) => transformStringList(value)
     }
 
-    def transformStringMap: PartialFunction[Any, Map[String, _]] = {
+    def transformStringMap: PartialFunction[Any, Map[String, _]] =  {
       case value: Map[String, _] => value
       case None => Map.empty
       case list: List[List[_]] => list.map { case (key: String) :: value :: Nil => key -> value }.toMap

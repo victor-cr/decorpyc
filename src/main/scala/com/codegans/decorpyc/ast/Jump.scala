@@ -12,7 +12,7 @@ object Jump extends ASTNodeFactory[Jump] {
   private val keyTarget: String = "target"
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): Jump = {
-    val expression = attributes(keyExpression).asInstanceOf[Boolean]
+    val expression = attributes.getOrElse(keyExpression, false).asInstanceOf[Boolean]
     val target = context.transformPyExpr(attributes(keyTarget)).get
 
     new Jump(attributes - keyExpression - keyTarget, fileName, lineNum, expression, target)

@@ -12,7 +12,7 @@ object MultilineSayAspect {
   val Body: Aspect[Body] = new Aspect[Body] {
     override def isApplicable(node: Node): Boolean = node.isInstanceOf[Body]
 
-    override def replace(node: Body): Body = internalReplace(node, node.children, e => node.copy(children = e))
+    override def replace(node: Body, version: Int): Body = internalReplace(node, node.children, version, e => node.copy(children = e))
   }
 
   val AST: Aspect[ASTNode] = new Aspect[ASTNode] {
@@ -26,18 +26,18 @@ object MultilineSayAspect {
       case _ => false
     }
 
-    override def replace(node: ast.ASTNode): ast.ASTNode = node match {
-      case parent: Init => internalReplace(parent, parent.children, e => parent.copy(children = e))
-      case parent: Label => internalReplace(parent, parent.children, e => parent.copy(children = e))
-      case parent: IfCondition => internalReplace(parent, parent.children, e => parent.copy(children = e))
-      case parent: MenuItem => internalReplace(parent, parent.children, e => parent.copy(children = e))
-      case parent: Translate => internalReplace(parent, parent.children, e => parent.copy(children = e))
-      case parent: UserStatement => internalReplace(parent, parent.children, e => parent.copy(children = e))
+    override def replace(node: ast.ASTNode, version: Int): ast.ASTNode = node match {
+      case parent: Init => internalReplace(parent, parent.children, version, e => parent.copy(children = e))
+      case parent: Label => internalReplace(parent, parent.children, version, e => parent.copy(children = e))
+      case parent: IfCondition => internalReplace(parent, parent.children, version, e => parent.copy(children = e))
+      case parent: MenuItem => internalReplace(parent, parent.children, version, e => parent.copy(children = e))
+      case parent: Translate => internalReplace(parent, parent.children, version, e => parent.copy(children = e))
+      case parent: UserStatement => internalReplace(parent, parent.children, version, e => parent.copy(children = e))
       case _ => node
     }
   }
 
-  private def internalReplace[T <: Node](parent: T, children: List[ASTNode], fn: List[ASTNode] => T): T = {
+  private def internalReplace[T <: Node](parent: T, children: List[ASTNode], version: Int, fn: List[ASTNode] => T): T = {
     val sayMap = children.filter(_.isInstanceOf[Say]).groupBy(_.lineNum).filter { case (_, list) => list.size > 1 }
 
     if (sayMap.nonEmpty) {

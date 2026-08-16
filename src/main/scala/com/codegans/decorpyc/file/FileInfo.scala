@@ -28,11 +28,11 @@ object FileInfo {
       val marker = source.readText(len)
 
       if (marker != header) {
-        log.info("Read resource raw data `{}`", name)
+        log.info("Read resource raw data `{}` ({} bytes)", name, source.length)
         source.reset()
         ResourceFileInfo(name, source)
       } else {
-        log.info("Read Ren'Py compiled data `{}`", name)
+        log.info("Read Ren'Py compiled data `{}` ({} bytes)", name, source.length)
         val slots = Iterator.continually(SlotInfo(source.readInt(), source.readInt(), source.readInt())).takeWhile(_ != SlotInfo.terminator).toVector
 
         // Write -->
@@ -59,10 +59,10 @@ object FileInfo {
 
         val compiled = source.readZLib(slots.head.length)
         val root = Pickle(compiled)
-        val decompiled = Printer.toSource(new OpcodeTransformer(NodeInterceptor(
+        val decompiled = Printer.toSource(OpcodeTransformer(NodeInterceptor(
           MultilineSayAspect.Body,
           MultilineSayAspect.AST
-        )).apply(root))
+        ), root).apply(root))
 
         source.reset()
         RenpyFileInfo(name, compiled, decompiled, slots)

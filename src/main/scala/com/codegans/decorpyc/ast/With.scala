@@ -13,7 +13,7 @@ object With extends ASTNodeFactory[With] {
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): With = {
     val expression = context.transformPyExpr(attributes(keyExpr))
-    val paired = context.transformPyExpr(attributes(keyPaired))
+    val paired = attributes.get(keyPaired).flatMap(context.transformPyExpr)
 
     new With(attributes - keyExpr - keyPaired, fileName, lineNum, expression, paired)
   }

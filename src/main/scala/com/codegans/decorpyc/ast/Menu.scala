@@ -24,7 +24,7 @@ object Menu extends ASTNodeFactory[Menu] {
   private val keyHasCaption: String = "has_caption"
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): Menu = {
-    val withA = context.transformPyExpr(attributes(keyWithA))
+    val withA = attributes.get(keyWithA).flatMap(context.transformPyExpr)
     val set = context.transformPyExpr(attributes.get(keySet))
     val args = context.transformArgumentInfo(attributes.get(keyArguments))
     val itemArgs = context.transformList(attributes.get(keyItemArguments)).map(context.transformArgumentInfo)

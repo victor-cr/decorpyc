@@ -13,7 +13,7 @@ object TranslateBlock extends ASTNodeFactory[TranslateBlock] {
 
   override def apply(context: NodeContext, attributes: Map[String, _], fileName: String, lineNum: Int): TranslateBlock = {
     val children = attributes(keyBlock).asInstanceOf[List[_]].flatMap(context.transformAST)
-    val language = context.transformString(attributes(keyLanguage)).getOrElse("english")
+    val language = attributes.get(keyLanguage).flatMap(context.transformString).getOrElse("english")
 
     new TranslateBlock(attributes - keyBlock - keyLanguage, children, fileName, lineNum, language)
   }

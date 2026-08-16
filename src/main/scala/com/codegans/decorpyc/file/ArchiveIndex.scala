@@ -16,6 +16,9 @@ object ArchiveIndex {
 
   def apply(root: OpcodeRoot): ArchiveIndex = {
     val list: List[Entry] = root.attributes.asInstanceOf[Map[String, List[List[_]]]].map {
+      case (name, List((offset: Int) :: (length: Int) :: Nil)) => Entry(name, offset, length)
+      case (name, List((offset: Long) :: (length: Long) :: Nil)) => Entry(name, offset, length)
+      case (name, List((offset: BigInt) :: (length: Int) :: Nil)) => Entry(name, offset.toLong, length)
       case (name, List((offset: Int) :: (length: Int) :: _ :: Nil)) => Entry(name, offset, length)
       case (name, List((offset: Long) :: (length: Long) :: _ :: Nil)) => Entry(name, offset, length)
       case (name, List((offset: BigInt) :: (length: Int) :: _ :: Nil)) => Entry(name, offset.toLong, length)

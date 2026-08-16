@@ -6,16 +6,18 @@ import scala.sys.process.*
 
 object RenPyPlugin extends AutoPlugin {
   private val versions: Seq[String] = Seq(
-    "8.3.1",
-    "8.2.3",
-    "8.1.3",
-    "8.0.3",
-    "7.8.1",
-    "7.7.3",
-    "7.6.3",
-    "7.5.3",
-    "7.4.11",
-    "7.3.5",
+    "8.5.0",  // "In Good Health"
+    "8.4.1",  // "Tomorrowland"
+    "8.3.7",  // "Second Star to the Right"
+    "8.2.3",  // "64bit Sensation"
+    "8.1.3",  // "Where No One Has Gone Before"
+    "8.0.3",  // "Heck Freezes Over"
+    "7.8.7",  // "Straight on Till Morning"
+    "7.7.3",  // "32bit Sensation"
+    "7.6.3",  // "To Boldly Go"
+    "7.5.3",  // "Heck's Getting Frosty"
+    "7.4.11", // 	"Lucky Beckoning Cat"
+    "7.3.5",  // "The world (wide web) is not enough."
   )
   private val resourceDir = Test / resourceDirectory
   private val targetDir = target

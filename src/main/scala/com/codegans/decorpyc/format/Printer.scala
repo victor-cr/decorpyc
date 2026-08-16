@@ -67,8 +67,8 @@ class Printer(layout: Layout) {
       layout.printExpr(expectedLine, indent, "=")
       layout.printExpr(expectedLine, indent, maybeCode.map(_.source.expression).getOrElse("None"))
 
-    case Label(_, Nil, _, expectedLine, labelName, _) if layout.hasKeywordAt(expectedLine, _.value == "call") =>
-      log.info("Apply edge case for nameable `call` statement. Convert barren `label` into `from`.")
+    case Label(_, Nil, fileName, expectedLine, labelName, _) if layout.hasKeywordAt(expectedLine, _.value == "call") =>
+      log.info("Apply edge case for nameable `call` statement. Convert barren `label` into `from` at {}@{}", fileName, expectedLine)
       layout.printKeyword(expectedLine, indent, "from")
       layout.printExpr(expectedLine, indent, labelName)
     case Label(_, children, _, expectedLine, labelName, params) =>
@@ -448,7 +448,7 @@ class Printer(layout: Layout) {
     var line = expectedLine
 
     if (layout.hasKeywordAt(expectedLine, e => e.indent == indent && e.value == "label")) {
-      log.info("Apply edge case for nameable `menu`. Replace barren `label` by `menu`.")
+      log.info("Apply edge case for nameable `menu`. Replace barren `label` by `menu` at {}@{}", menu.fileName, expectedLine)
       layout.cleanAt(expectedLine)
     }
 

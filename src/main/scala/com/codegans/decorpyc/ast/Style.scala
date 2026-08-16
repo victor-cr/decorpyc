@@ -26,8 +26,8 @@ object Style extends ASTNodeFactory[Style] {
     val parent = context.transformString(attributes.get(keyParent))
     val clear = attributes(keyClear).asInstanceOf[Boolean]
     val delAttrs = context.transformStringList(attributes.get(keyDelAttr))
-    val variant = context.transformPyExpr(attributes(keyVariant))
-    val take = attributes(keyTake).asInstanceOf[Option[_]]
+    val variant = attributes.get(keyVariant).flatMap(context.transformPyExpr)
+    val take = attributes.get(keyTake).flatMap(_.asInstanceOf[Option[_]])
     val styleName = attributes(keyStyleName).asInstanceOf[String]
     val properties = context.transformStringMap(attributes.get(keyProperties)).map {
       case (key, value) => key -> context.transformPyExpr(value)

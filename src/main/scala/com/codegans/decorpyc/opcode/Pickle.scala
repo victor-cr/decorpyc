@@ -161,7 +161,7 @@ class Pickle(key: Option[Int], _source: ByteSource) {
   }
 
   private def readShortString(charset: Charset): Unit = {
-    val len = source.readByte()
+    val len = source.readByte() & 0xff
     val value = source.readText(len, charset)
     stack.push(value)
   }
@@ -181,6 +181,12 @@ class Pickle(key: Option[Int], _source: ByteSource) {
   private def readGlobal(): Unit = {
     val className = source.readLine(StandardCharsets.UTF_8)
     val methodName = source.readLine(StandardCharsets.UTF_8)
+    stack.push(GlobalFunction(className, methodName))
+  }
+
+  private def readStackGlobal(): Unit = {
+    val methodName = stack.pop().asInstanceOf[String]
+    val className = stack.pop().asInstanceOf[String]
     stack.push(GlobalFunction(className, methodName))
   }
 
@@ -307,12 +313,12 @@ object Pickle {
     OpcodeParser("SHORT_BINUNICODE", 0x8c, _.readShortString(StandardCharsets.UTF_8), 4, "push short string; UTF-8 length < 256 bytes"),
     OpcodeParser("BINUNICODE8", 0x8d, NOT_IMPLEMENTED, 4, "push very long string"),
     OpcodeParser("BINBYTES8", 0x8e, NOT_IMPLEMENTED, 4, "push very long bytes string"),
-    OpcodeParser("EMPTY_SET", 0x8f, NOT_IMPLEMENTED, 4, "push empty set on the stack"),
+    OpcodeParser("EMPTY_SET", 0x8f, _.readSpecial(List()), 4, "push empty set on the stack"),
 
     OpcodeParser("ADDITEMS", 0x90, NOT_IMPLEMENTED, 4, "modify set by adding topmost stack items"),
     OpcodeParser("FROZENSET", 0x91, NOT_IMPLEMENTED, 4, "build frozenset from topmost stack items"),
     OpcodeParser("NEWOBJ_EX", 0x92, NOT_IMPLEMENTED, 4, "like NEWOBJ but work with keyword only arguments"),
-    OpcodeParser("STACK_GLOBAL", 0x93, NOT_IMPLEMENTED, 4, "same as GLOBAL but using names on the stacks"),
+    OpcodeParser("STACK_GLOBAL", 0x93, _.readStackGlobal(), 4, "same as GLOBAL but using names on the stacks"),
     OpcodeParser("MEMOIZE", 0x94, _.readMemoize(), 4, "store top of the stack in memo"),
     OpcodeParser("FRAME", 0x95, _.readFrame(), 4, "indicate the beginning of a new frame"),
     OpcodeParser("BYTEARRAY8", 0x96, NOT_IMPLEMENTED, 5, "push bytearray"),

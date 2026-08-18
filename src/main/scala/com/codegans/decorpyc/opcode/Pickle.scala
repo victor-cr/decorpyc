@@ -349,7 +349,7 @@ object Pickle {
 
         operation(pickle)
         log.debug("Executed opcode 0x{} [{}] parser: {}", format(code & 0xFF, 2), name, description)
-        Success()
+        Success(())
       } catch {
         case NonFatal(e) =>
           log.error("Failed during execution of opcode 0x{} [{}] processor: {}", format(code & 0xFF, 2), name, description, e)

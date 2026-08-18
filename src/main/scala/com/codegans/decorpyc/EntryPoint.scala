@@ -2,16 +2,16 @@ package com.codegans.decorpyc
 
 import com.codegans.decorpyc.file.{ArchiveInfo, FileInfo}
 import com.codegans.decorpyc.util.ByteSource
-import org.rogach.scallop.{Compat, ScallopConf, ScallopOption}
+import org.rogach.scallop.{Compat, ScallopConf, ScallopOption, given}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.{File, IOException}
-import java.nio.file._
+import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import scala.collection.mutable.ListBuffer
 
 object EntryPoint {
-  private val log: Logger = LoggerFactory.getLogger(getClass)
+  private val log: Logger = LoggerFactory.getLogger(getClass.getName.stripSuffix("$"))
   private lazy val artifact: String = Option(getClass.getPackage.getImplementationTitle).getOrElse("decorpyc")
   private lazy val version: String = Option(getClass.getPackage.getImplementationVersion).getOrElse("0.0.0-DEBUG")
   private val banner: String =
@@ -104,7 +104,12 @@ object EntryPoint {
     }
 
     sources.foreach { file =>
-      log.info("Do nothing: {}", file)
+      val source: Path = file.toPath
+      val target: Path = output.toPath.resolve(input.toPath.relativize(source))
+
+      Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+
+      log.info("Successfully copied source file `{}` to: {}", source.getFileName, target)
     }
   }
 
@@ -135,8 +140,8 @@ object EntryPoint {
     }
   }
 
-  class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
-    val help: ScallopOption[Boolean] = opt[Boolean](
+  private class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
+    private val help: ScallopOption[Boolean] = opt[Boolean](
       name = "help", short = '?', argName = "",
       descr = "Prints this help message and exits"
     )
@@ -165,7 +170,7 @@ object EntryPoint {
     )
 
     version(EntryPoint.artifact + "-" + EntryPoint.version)
-    banner(EntryPoint.banner)
+    this.banner(EntryPoint.banner)
     exitHandler = exitCode => {
       if (exitCode != 0) println(s"For help use `--${help.name}` start argument")
       Compat.exit(exitCode)

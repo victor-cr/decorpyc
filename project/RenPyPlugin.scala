@@ -1,7 +1,6 @@
 import sbt.{Def, *}
 import sbt.Keys.*
 import sbt.internal.util.ManagedLogger
-
 import scala.sys.process.*
 
 object RenPyPlugin extends AutoPlugin {
@@ -16,7 +15,7 @@ object RenPyPlugin extends AutoPlugin {
     "7.7.3",  // "32bit Sensation"
     "7.6.3",  // "To Boldly Go"
     "7.5.3",  // "Heck's Getting Frosty"
-    "7.4.11", // 	"Lucky Beckoning Cat"
+    "7.4.11", // "Lucky Beckoning Cat"
     "7.3.5",  // "The world (wide web) is not enough."
   )
   private val resourceDir = Test / resourceDirectory
@@ -66,7 +65,7 @@ object RenPyPlugin extends AutoPlugin {
             log.info(s"Ren'Py v$version has been already downloaded, but not unzipped.")
           } else {
             log.info(s"Downloading Ren'Py v$version...")
-            url(s"https://www.renpy.org/dl/$version/renpy-$version-sdk.zip") #> tmpFile ! log
+            uri(s"https://www.renpy.org/dl/$version/renpy-$version-sdk.zip").toURL #> tmpFile ! log
             log.info(s"Ren'Py v$version has been already downloaded to a temp file. Renaming...")
             IO.move(tmpFile, zipFile)
           }

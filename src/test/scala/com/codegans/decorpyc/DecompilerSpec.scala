@@ -6,7 +6,7 @@ import com.codegans.decorpyc.util.ByteSource
 import org.scalatest.Inspectors.forAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
+import org.scalatest.matchers.should.Matchers.shouldEqual
 
 import java.io.{BufferedInputStream, File, FileFilter, FileInputStream, FilenameFilter}
 import java.nio.charset.{Charset, StandardCharsets}

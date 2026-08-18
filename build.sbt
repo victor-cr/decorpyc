@@ -3,7 +3,7 @@ import sbtrelease.Version
 import scala.language.postfixOps
 
 ThisBuild / organization := "com.codegans.decorpyc"
-ThisBuild / scalaVersion := "2.13.11"
+ThisBuild / scalaVersion := "3.8.4"
 ThisBuild / libraryDependencies ++= Dependencies.compileDependencies ++ Dependencies.runtimeDependencies ++ Dependencies.testDependencies
 
 ThisBuild / publish / skip := true
@@ -21,17 +21,20 @@ ThisBuild / publishTo := Some(
 Compile / mainClass := Some("com.codegans.decorpyc.EntryPoint")
 //Compile / renpyVersions := Seq("7.3.5")
 
+Universal / name := name.value
+Universal / packageName := packageName.value
 Universal / topLevelDirectory := Some(name.value)
-Universal / packageBin := {
-  val originalFileName = (Universal / packageBin).value
-  val ext = originalFileName.ext
-  val newFileName = file(originalFileName.getParent) / (name.value + "-v" + version.value + "." + ext)
-  IO.move(originalFileName, newFileName)
-  newFileName
-}
+//Universal / packageBin := {
+//  val originalFileName = (Universal / packageBin).value
+//  val ext = originalFileName.ext
+//  val newFileName = file(originalFileName.getParent) / (name.value + "-v" + version.value + "." + ext)
+//  IO.move(originalFileName, newFileName)
+//  newFileName
+//}
 
 lazy val root = (project in file(".")).enablePlugins(RenPyPlugin, JavaAppPackaging).settings(
   name := "decorpyc",
+  packageName := s"${name.value}-${version.value}",
   maintainer := "victor2@ukr.net",
   releaseVersionBump := Version.Bump.Next,
   releaseVersion := Release.fnReleaseVersion,
